@@ -1,0 +1,8 @@
+# Dev container local environment overrides
+.devcontainer/.env
+
+# Personal shell customizations (use *.shared.sh for team defaults)
+.devcontainer/config/shell/*.local.sh
+
+# Claude local preferences
+.claude/settings.local.json
