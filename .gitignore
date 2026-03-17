@@ -6,3 +6,17 @@
 
 # Claude local preferences
 .claude/settings.local.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+dist/
+*.egg-info/
+.venv/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+.task/
+uv.lock

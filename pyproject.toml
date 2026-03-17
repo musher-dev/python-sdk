@@ -1,0 +1,106 @@
+[project]
+name = "musher"
+version = "0.1.0"
+description = "Python SDK for the Musher bundle distribution platform"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.13"
+dependencies = [
+    "httpx>=0.27",
+    "pydantic>=2.12",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.2",
+    "basedpyright>=1.38.1",
+    "nodejs-wheel>=22,<24",
+    "pytest>=8.3.0,<9.0.0",
+    "pytest-asyncio>=1.0.0",
+    "pytest-cov>=4.0.0",
+    "respx>=0.20.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/musher"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.basedpyright]
+include = ["src"]
+exclude = [
+    "**/node_modules",
+    "**/__pycache__",
+    "tests",
+]
+pythonVersion = "3.13"
+typeCheckingMode = "standard"
+
+[tool.ruff]
+required-version = ">=0.14.14"
+line-length = 100
+target-version = "py313"
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",
+    "F",
+    "I",
+    "N",
+    "UP",
+    "B",
+    "C4",
+    "A",
+    "DTZ",
+    "ASYNC",
+    "RUF",
+    "T20",
+    "PGH",
+    "PT",
+    "PERF",
+    "RET",
+    "G",
+    "BLE",
+    "SIM",
+    "TCH",
+    "ARG",
+    "PTH",
+    "PL",
+    "ERA001",
+    "S",
+    "FIX",
+]
+ignore = [
+    "E501",
+    "A003",
+]
+fixable = ["ALL"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*" = ["S101", "S105", "S106", "S108", "ARG001", "ARG002", "PLR2004"]
+"__init__.py" = ["F401"]
+"examples/**/*" = ["T201", "S106"]
+
+[tool.ruff.lint.pylint]
+max-args = 8
+
+[tool.ruff.lint.isort]
+known-first-party = ["musher"]
+combine-as-imports = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
