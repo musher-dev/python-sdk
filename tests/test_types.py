@@ -14,9 +14,9 @@ from musher import (
 class TestAssetType:
     def test_values_match_platform(self):
         assert set(AssetType) == {
-            "agent_definition",
+            "agent_spec",
             "skill",
-            "tool_config",
+            "toolset",
             "prompt",
             "config",
             "other",

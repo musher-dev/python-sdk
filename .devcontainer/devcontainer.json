@@ -54,9 +54,6 @@
     // --- Linting ---
     "ghcr.io/lukewiwa/features/shellcheck:0": { "version": "stable" },
 
-    // --- AI tooling ---
-    "ghcr.io/anthropics/devcontainer-features/claude-code:1": {}
-
     // --- Optional: Infrastructure tooling (uncomment as needed) ---
     // "ghcr.io/devcontainers-extra/features/opentofu:1": {},
     // "ghcr.io/devcontainers-extra/features/digitalocean-cli:1": {},

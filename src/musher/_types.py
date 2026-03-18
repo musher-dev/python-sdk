@@ -9,9 +9,9 @@ from enum import StrEnum
 class AssetType(StrEnum):
     """Type of asset within a bundle."""
 
-    AGENT_DEFINITION = "agent_definition"
+    AGENT_SPEC = "agent_spec"
     SKILL = "skill"
-    TOOL_CONFIG = "tool_config"
+    TOOLSET = "toolset"
     PROMPT = "prompt"
     CONFIG = "config"
     OTHER = "other"

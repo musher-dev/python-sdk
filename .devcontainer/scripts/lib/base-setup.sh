@@ -66,6 +66,23 @@ base_fix_nvm_permissions() {
   fix_nvm_permissions
 }
 
+# --- Claude Code ---
+
+# Installs Claude Code via the native installer if not already present.
+#
+# Outputs:
+#   Writes progress to stderr via log()
+# Returns:
+#   0 on success, non-zero on failure
+base_install_claude_code() {
+  if has_cmd claude; then
+    log "Claude Code already installed, skipping"
+    return 0
+  fi
+  log "Installing Claude Code via native installer..."
+  curl -fsSL https://claude.ai/install.sh | bash
+}
+
 # --- Codex CLI ---
 
 # Installs the Codex CLI if not already present.
@@ -121,6 +138,7 @@ base_setup() {
   base_setup_config_dirs
   base_setup_cache_dirs
   base_fix_nvm_permissions
+  base_install_claude_code
   base_install_codex
   base_install_lefthook
   base_verify_tools

@@ -14,6 +14,15 @@ from musher._errors import (
     RegistryError,
     VersionNotFoundError,
 )
+from musher._export import ClaudePluginExport, OpenAIInlineSkill, OpenAILocalSkill
+from musher._handles import (
+    AgentSpecHandle,
+    BundleSelection,
+    FileHandle,
+    PromptHandle,
+    SkillHandle,
+    ToolsetHandle,
+)
 from musher._types import (
     OCI_MEDIA_TYPE_ASSET,
     OCI_MEDIA_TYPE_CONFIG,
@@ -29,6 +38,7 @@ __all__ = [
     "OCI_MEDIA_TYPE_CONFIG",
     # Errors
     "APIError",
+    "AgentSpecHandle",
     # Models
     "Asset",
     # Types
@@ -39,20 +49,28 @@ __all__ = [
     "Bundle",
     "BundleNotFoundError",
     "BundleRef",
+    "BundleSelection",
     "BundleSourceType",
     "BundleVersionState",
     "BundleVisibility",
     "CacheError",
+    "ClaudePluginExport",
     "Client",
+    "FileHandle",
     "IntegrityError",
     "Manifest",
     "ManifestAsset",
     # Config
     "MusherConfig",
     "MusherError",
+    "OpenAIInlineSkill",
+    "OpenAILocalSkill",
+    "PromptHandle",
     "RateLimitError",
     "RegistryError",
     "ResolveResult",
+    "SkillHandle",
+    "ToolsetHandle",
     "VersionNotFoundError",
     "configure",
     "get_config",
