@@ -2,9 +2,12 @@
 
 import pytest
 
-from musher._config import MusherConfig
+import musher._config as config_mod
 
 
-@pytest.fixture
-def config() -> MusherConfig:
-    return MusherConfig(token="test-token")
+@pytest.fixture(autouse=True)
+def _reset_global_config():
+    """Reset global config between tests to avoid leaking state."""
+    config_mod._global_config = None
+    yield
+    config_mod._global_config = None

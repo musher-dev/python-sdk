@@ -6,9 +6,10 @@ import musher
 
 
 async def main():
+    # Token auto-discovered from MUSHER_API_KEY env var, keyring, or config file.
+    # Optionally set explicitly:
     musher.configure(token="your-token-here")
 
-    # Resolve without pulling asset content (will raise NotImplementedError until implemented)
     async with musher.AsyncClient() as client:
         result = await client.resolve("myorg/my-bundle:1.0.0")
 
