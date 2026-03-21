@@ -5,9 +5,11 @@ from __future__ import annotations
 import logging
 import os
 import stat
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
-from musher._paths import config_dir
+if TYPE_CHECKING:
+    from pathlib import Path
 
 _log = logging.getLogger(__name__)
 
@@ -30,13 +32,16 @@ def resolve_registry_url() -> str:
     return _DEFAULT_REGISTRY_URL
 
 
-def resolve_token(*, registry_url: str | None = None, profile: str = "default") -> str | None:
+def resolve_token(
+    *,
+    registry_url: str | None = None,
+    config_dir: Path | None = None,
+) -> str | None:
     """Resolve an API token using the credential chain.
 
     1. Environment variables (``MUSHER_API_KEY``)
-    2. OS keyring — host-scoped service ``musher/{hostname}``
-    3. Profile config file — ``<config_dir>/config.toml``
-    4. File fallback — ``$config_dir/api-key`` (must be 0600)
+    2. OS keyring — host-scoped service ``musher/{host}``
+    3. File fallback — ``<config_dir>/credentials/<host_id>/api-key`` (must be 0600)
     """
     # 1. Environment variables
     for var in _TOKEN_ENV_VARS:
@@ -49,13 +54,8 @@ def resolve_token(*, registry_url: str | None = None, profile: str = "default") 
     if keyring_token:
         return keyring_token
 
-    # 3. Profile config file
-    profile_token = _try_profile(profile=profile)
-    if profile_token:
-        return profile_token
-
-    # 4. File fallback
-    return _try_file()
+    # 3. File fallback (host-scoped)
+    return _try_file(registry_url=registry_url, config_dir=config_dir)
 
 
 def _try_keyring(*, registry_url: str | None = None) -> str | None:
@@ -64,8 +64,11 @@ def _try_keyring(*, registry_url: str | None = None) -> str | None:
         import keyring  # type: ignore[import-untyped]  # noqa: PLC0415
 
         url = registry_url or resolve_registry_url()
-        hostname = urlparse(url).hostname or "api.musher.dev"
-        service = f"musher/{hostname}"
+        parsed = urlparse(url)
+        hostname = parsed.hostname or "api.musher.dev"
+        port = parsed.port
+        host = f"{hostname}:{port}" if port else hostname
+        service = f"musher/{host}"
         token = keyring.get_password(service, "api-key")
         if token:
             return token
@@ -74,34 +77,40 @@ def _try_keyring(*, registry_url: str | None = None) -> str | None:
     return None
 
 
-def _try_profile(profile: str = "default") -> str | None:
-    """Read token from config_dir/config.toml profile section."""
-    config_file = config_dir() / "config.toml"
-    if not config_file.is_file():
+def _host_id(url: str) -> str:
+    """Return a filesystem-safe host identifier from a URL."""
+    parsed = urlparse(url)
+    hostname = parsed.hostname or "api.musher.dev"
+    port = parsed.port
+    return f"{hostname}_{port}" if port else hostname
+
+
+def _read_key_file(path: Path) -> str | None:
+    """Read a key file if it exists and has safe permissions (0600)."""
+    if not path.is_file():
         return None
 
-    try:
-        import tomllib  # noqa: PLC0415
-
-        data = tomllib.loads(config_file.read_text())
-        profile_data = data.get("profile", {}).get(profile, {})
-        token = profile_data.get("api_key")
-        if token:
-            return token
-    except Exception:  # noqa: BLE001
-        _log.debug("profile config read failed", exc_info=True)
-    return None
-
-
-def _try_file() -> str | None:
-    """Read token from config_dir/api-key if permissions are safe."""
-    key_file = config_dir() / "api-key"
-    if not key_file.is_file():
-        return None
-
-    # Check permissions — must be owner-only (0600)
-    mode = key_file.stat().st_mode
+    mode = path.stat().st_mode
     if mode & (stat.S_IRWXG | stat.S_IRWXO):
         return None
 
-    return key_file.read_text().strip() or None
+    return path.read_text().strip() or None
+
+
+def _try_file(
+    *,
+    registry_url: str | None = None,
+    config_dir: Path | None = None,
+) -> str | None:
+    """Read token from host-scoped credential file."""
+    if config_dir is None:
+        from musher._paths import config_dir as _default_config_dir  # noqa: PLC0415
+
+        config_dir = _default_config_dir()
+
+    url = registry_url or resolve_registry_url()
+    host = _host_id(url)
+
+    # Host-scoped: <config_dir>/credentials/<host_id>/api-key
+    host_scoped = config_dir / "credentials" / host / "api-key"
+    return _read_key_file(host_scoped)

@@ -7,7 +7,6 @@ from unittest.mock import MagicMock, patch
 from musher._auth import (
     _try_file,
     _try_keyring,
-    _try_profile,
     resolve_registry_url,
     resolve_token,
 )
@@ -22,7 +21,6 @@ class TestEnvVar:
         with (
             patch.dict(os.environ, {"MUSHER_API_KEY": ""}, clear=False),
             patch("musher._auth._try_keyring", return_value=None),
-            patch("musher._auth._try_profile", return_value=None),
             patch("musher._auth._try_file", return_value=None),
         ):
             # Empty string is falsy, should fall through to None
@@ -63,66 +61,74 @@ class TestKeyring:
             _try_keyring()
             mock_keyring.get_password.assert_called_once_with("musher/api.musher.dev", "api-key")
 
+    def test_keyring_includes_port(self):
+        """Keyring service name includes port when present in URL."""
+        mock_keyring = MagicMock()
+        mock_keyring.get_password.return_value = "kr-token"
+        with patch.dict("sys.modules", {"keyring": mock_keyring}):
+            result = _try_keyring(registry_url="https://localhost:8080")
+            mock_keyring.get_password.assert_called_once_with("musher/localhost:8080", "api-key")
+            assert result == "kr-token"
 
-class TestProfileConfig:
-    def test_reads_api_key_from_profile(self, tmp_path: Path):
-        config = tmp_path / "musher"
-        config.mkdir()
-        (config / "config.toml").write_text('[profile.default]\napi_key = "profile-token"\n')
-        with patch("musher._auth.config_dir", return_value=config):
-            assert _try_profile() == "profile-token"
 
-    def test_reads_named_profile(self, tmp_path: Path):
-        config = tmp_path / "musher"
-        config.mkdir()
-        (config / "config.toml").write_text('[profile.staging]\napi_key = "staging-token"\n')
-        with patch("musher._auth.config_dir", return_value=config):
-            assert _try_profile(profile="staging") == "staging-token"
-
-    def test_missing_config_file_returns_none(self, tmp_path: Path):
-        with patch("musher._auth.config_dir", return_value=tmp_path / "musher"):
-            assert _try_profile() is None
-
-    def test_missing_profile_returns_none(self, tmp_path: Path):
-        config = tmp_path / "musher"
-        config.mkdir()
-        (config / "config.toml").write_text('[profile.other]\napi_key = "other-token"\n')
-        with patch("musher._auth.config_dir", return_value=config):
-            assert _try_profile() is None
+def _write_host_scoped_key(
+    config_dir: Path,
+    token: str,
+    host: str = "api.musher.dev",
+    mode: int = 0o600,
+) -> Path:
+    """Helper to create a host-scoped credential file."""
+    key_file = config_dir / "credentials" / host / "api-key"
+    key_file.parent.mkdir(parents=True, exist_ok=True)
+    key_file.write_text(f"{token}\n")
+    key_file.chmod(mode)
+    return key_file
 
 
 class TestFileFallback:
     def test_reads_file_with_correct_permissions(self, tmp_path: Path):
-        key_file = tmp_path / "musher" / "api-key"
-        key_file.parent.mkdir(parents=True)
-        key_file.write_text("file-token\n")
-        key_file.chmod(0o600)
+        config = tmp_path / "musher"
+        _write_host_scoped_key(config, "file-token")
 
         env_backup = os.environ.pop("MUSHER_API_KEY", None)
         try:
-            with (
-                patch("musher._paths.config_dir", return_value=tmp_path / "musher"),
-                patch("musher._auth.config_dir", return_value=tmp_path / "musher"),
-                patch("musher._auth._try_keyring", return_value=None),
-                patch("musher._auth._try_profile", return_value=None),
-            ):
-                assert resolve_token() == "file-token"
+            with patch("musher._auth._try_keyring", return_value=None):
+                assert resolve_token(config_dir=config) == "file-token"
         finally:
             if env_backup is not None:
                 os.environ["MUSHER_API_KEY"] = env_backup
 
     def test_rejects_file_with_group_permissions(self, tmp_path: Path):
-        key_file = tmp_path / "musher" / "api-key"
-        key_file.parent.mkdir(parents=True)
-        key_file.write_text("file-token\n")
-        key_file.chmod(0o640)
+        config = tmp_path / "musher"
+        _write_host_scoped_key(config, "file-token", mode=0o640)
 
-        with patch("musher._auth.config_dir", return_value=tmp_path / "musher"):
-            assert _try_file() is None
+        assert _try_file(config_dir=config) is None
 
     def test_missing_file_returns_none(self, tmp_path: Path):
-        with patch("musher._auth.config_dir", return_value=tmp_path / "musher"):
-            assert _try_file() is None
+        assert _try_file(config_dir=tmp_path / "musher") is None
+
+    def test_try_file_with_custom_config_dir(self, tmp_path: Path):
+        """_try_file uses config_dir param instead of default."""
+        config = tmp_path / "custom-config"
+        _write_host_scoped_key(config, "custom-token")
+
+        assert _try_file(config_dir=config) == "custom-token"
+
+    def test_reads_host_scoped_credential_file(self, tmp_path: Path):
+        """Host-scoped credential file is found."""
+        config = tmp_path / "musher"
+        _write_host_scoped_key(config, "host-token", host="custom.registry.dev")
+
+        assert (
+            _try_file(registry_url="https://custom.registry.dev", config_dir=config) == "host-token"
+        )
+
+    def test_host_scoped_with_port(self, tmp_path: Path):
+        """Host-scoped file uses underscore-separated port."""
+        config = tmp_path / "musher"
+        _write_host_scoped_key(config, "port-token", host="localhost_8080")
+
+        assert _try_file(registry_url="https://localhost:8080", config_dir=config) == "port-token"
 
 
 class TestResolveRegistryUrl:

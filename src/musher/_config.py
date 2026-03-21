@@ -60,8 +60,9 @@ def configure(  # noqa: PLR0913
 
     global _global_config  # noqa: PLW0603
 
-    # Resolve URL first so token resolution can use the correct host for keyring
+    # Resolve URL and config_dir first so token resolution can use them
     resolved_url = registry_url or api_url or resolve_registry_url()
+    resolved_config_dir = config_dir or _default_config_dir()
 
     # Resolve token: explicit token > explicit api_key > credential chain
     if token is not _UNSET:
@@ -69,13 +70,13 @@ def configure(  # noqa: PLR0913
     elif api_key is not _UNSET:
         resolved_token = api_key  # type: ignore[assignment]
     else:
-        resolved_token = resolve_token(registry_url=resolved_url)
+        resolved_token = resolve_token(registry_url=resolved_url, config_dir=resolved_config_dir)
 
     _global_config = MusherConfig(
         token=resolved_token,
         registry_url=resolved_url,
         cache_dir=cache_dir or _default_cache_dir(),
-        config_dir=config_dir or _default_config_dir(),
+        config_dir=resolved_config_dir,
         data_dir=data_dir or _default_data_dir(),
         state_dir=state_dir or _default_state_dir(),
         verify_checksums=verify_checksums,

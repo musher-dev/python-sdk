@@ -81,7 +81,18 @@ class TestConfigure:
         """configure(api_url=...) should pass that URL to resolve_token for keyring lookup."""
         with patch("musher._auth.resolve_token", return_value="tok") as mock_resolve:
             configure(api_url="https://staging.musher.dev")
-        mock_resolve.assert_called_once_with(registry_url="https://staging.musher.dev")
+        call_kwargs = mock_resolve.call_args[1]
+        assert call_kwargs["registry_url"] == "https://staging.musher.dev"
+        assert "config_dir" in call_kwargs
+
+    def test_configure_passes_config_dir_to_resolve_token(self, tmp_path: Path):
+        """configure(config_dir=...) passes that dir to resolve_token."""
+        custom_dir = tmp_path / "custom-config"
+        with patch("musher._auth.resolve_token", return_value="tok") as mock_resolve:
+            configure(config_dir=custom_dir)
+        mock_resolve.assert_called_once_with(
+            registry_url="https://api.musher.dev", config_dir=custom_dir
+        )
 
 
 class TestGetConfig:
