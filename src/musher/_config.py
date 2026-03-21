@@ -60,15 +60,16 @@ def configure(  # noqa: PLR0913
 
     global _global_config  # noqa: PLW0603
 
+    # Resolve URL first so token resolution can use the correct host for keyring
+    resolved_url = registry_url or api_url or resolve_registry_url()
+
     # Resolve token: explicit token > explicit api_key > credential chain
     if token is not _UNSET:
         resolved_token: str | None = token  # type: ignore[assignment]
     elif api_key is not _UNSET:
         resolved_token = api_key  # type: ignore[assignment]
     else:
-        resolved_token = resolve_token()
-
-    resolved_url = registry_url or api_url or resolve_registry_url()
+        resolved_token = resolve_token(registry_url=resolved_url)
 
     _global_config = MusherConfig(
         token=resolved_token,
@@ -93,8 +94,9 @@ def get_config() -> MusherConfig:
     if _global_config is None:
         from musher._auth import resolve_registry_url, resolve_token  # noqa: PLC0415
 
+        url = resolve_registry_url()
         _global_config = MusherConfig(
-            token=resolve_token(),
-            registry_url=resolve_registry_url(),
+            token=resolve_token(registry_url=url),
+            registry_url=url,
         )
     return _global_config

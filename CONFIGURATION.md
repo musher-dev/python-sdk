@@ -26,17 +26,14 @@ On Windows, the SDK uses a flat layout under `%LOCALAPPDATA%\musher\` with categ
 
 | Variable | Purpose |
 |---|---|
-| `MUSHER_API_KEY` | API token (checked first) |
-| `MUSH_API_KEY` | API token alias |
+| `MUSHER_API_KEY` | API token |
 
 ### Registry URL
 
 | Variable | Purpose |
 |---|---|
 | `MUSHER_API_URL` | Registry URL (checked first) |
-| `MUSH_API_URL` | Registry URL alias |
 | `MUSHER_BASE_URL` | Registry URL alias |
-| `MUSH_BASE_URL` | Registry URL alias |
 
 Default: `https://api.musher.dev`
 
@@ -46,7 +43,7 @@ All URL values are stripped of trailing `/` before use.
 
 The SDK resolves credentials in this order, stopping at the first match:
 
-1. **Environment variables** — `MUSHER_API_KEY`, then `MUSH_API_KEY`
+1. **Environment variables** — `MUSHER_API_KEY`
 2. **OS keyring** — service `musher/{hostname}`, username `api-key`
    - Hostname is derived from the registry URL (e.g. `musher/api.musher.dev`)
 3. **Profile config file** — `<config_dir>/config.toml`

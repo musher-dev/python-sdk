@@ -77,6 +77,12 @@ class TestConfigure:
         cfg = get_config()
         assert cfg.registry_url == "https://primary.dev"
 
+    def test_configure_passes_url_to_resolve_token(self):
+        """configure(api_url=...) should pass that URL to resolve_token for keyring lookup."""
+        with patch("musher._auth.resolve_token", return_value="tok") as mock_resolve:
+            configure(api_url="https://staging.musher.dev")
+        mock_resolve.assert_called_once_with(registry_url="https://staging.musher.dev")
+
 
 class TestGetConfig:
     def test_auto_discovers_env_vars(self):
@@ -102,5 +108,18 @@ class TestGetConfig:
                 cfg1 = get_config()
                 cfg2 = get_config()
                 assert cfg1 is cfg2
+        finally:
+            config_mod._global_config = None
+
+    def test_get_config_passes_url_to_resolve_token(self):
+        """get_config() should pass the resolved URL to resolve_token."""
+        config_mod._global_config = None
+        try:
+            with (
+                patch("musher._auth.resolve_registry_url", return_value="https://resolved.dev"),
+                patch("musher._auth.resolve_token", return_value=None) as mock_resolve,
+            ):
+                get_config()
+                mock_resolve.assert_called_once_with(registry_url="https://resolved.dev")
         finally:
             config_mod._global_config = None

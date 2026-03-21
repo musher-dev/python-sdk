@@ -18,22 +18,6 @@ class TestEnvVar:
         with patch.dict(os.environ, {"MUSHER_API_KEY": "env-token"}):
             assert resolve_token() == "env-token"
 
-    def test_mush_api_key_alias(self):
-        env_backup = os.environ.pop("MUSHER_API_KEY", None)
-        try:
-            with patch.dict(os.environ, {"MUSH_API_KEY": "mush-token"}, clear=False):
-                assert resolve_token() == "mush-token"
-        finally:
-            if env_backup is not None:
-                os.environ["MUSHER_API_KEY"] = env_backup
-
-    def test_musher_api_key_takes_precedence_over_mush(self):
-        with patch.dict(
-            os.environ,
-            {"MUSHER_API_KEY": "musher-token", "MUSH_API_KEY": "mush-token"},
-        ):
-            assert resolve_token() == "musher-token"
-
     def test_empty_env_var_falls_through(self):
         with (
             patch.dict(os.environ, {"MUSHER_API_KEY": ""}, clear=False),
@@ -48,15 +32,12 @@ class TestEnvVar:
 class TestKeyring:
     def test_keyring_used_when_no_env(self):
         env_backup = os.environ.pop("MUSHER_API_KEY", None)
-        env_backup2 = os.environ.pop("MUSH_API_KEY", None)
         try:
             with patch("musher._auth._try_keyring", return_value="keyring-token"):
                 assert resolve_token() == "keyring-token"
         finally:
             if env_backup is not None:
                 os.environ["MUSHER_API_KEY"] = env_backup
-            if env_backup2 is not None:
-                os.environ["MUSH_API_KEY"] = env_backup2
 
     def test_keyring_import_failure_returns_none(self):
         # If keyring is not installed, should return None gracefully
@@ -118,7 +99,6 @@ class TestFileFallback:
         key_file.chmod(0o600)
 
         env_backup = os.environ.pop("MUSHER_API_KEY", None)
-        env_backup2 = os.environ.pop("MUSH_API_KEY", None)
         try:
             with (
                 patch("musher._paths.config_dir", return_value=tmp_path / "musher"),
@@ -130,8 +110,6 @@ class TestFileFallback:
         finally:
             if env_backup is not None:
                 os.environ["MUSHER_API_KEY"] = env_backup
-            if env_backup2 is not None:
-                os.environ["MUSH_API_KEY"] = env_backup2
 
     def test_rejects_file_with_group_permissions(self, tmp_path: Path):
         key_file = tmp_path / "musher" / "api-key"
@@ -152,44 +130,17 @@ class TestResolveRegistryUrl:
         with patch.dict(os.environ, {"MUSHER_API_URL": "https://custom.dev/"}, clear=False):
             assert resolve_registry_url() == "https://custom.dev"
 
-    def test_mush_api_url(self):
-        env_backup = os.environ.pop("MUSHER_API_URL", None)
-        try:
-            with patch.dict(os.environ, {"MUSH_API_URL": "https://mush.dev"}, clear=False):
-                assert resolve_registry_url() == "https://mush.dev"
-        finally:
-            if env_backup is not None:
-                os.environ["MUSHER_API_URL"] = env_backup
-
     def test_musher_base_url(self):
         env_backup1 = os.environ.pop("MUSHER_API_URL", None)
-        env_backup2 = os.environ.pop("MUSH_API_URL", None)
         try:
             with patch.dict(os.environ, {"MUSHER_BASE_URL": "https://base.dev/"}, clear=False):
                 assert resolve_registry_url() == "https://base.dev"
         finally:
             if env_backup1 is not None:
                 os.environ["MUSHER_API_URL"] = env_backup1
-            if env_backup2 is not None:
-                os.environ["MUSH_API_URL"] = env_backup2
-
-    def test_mush_base_url(self):
-        env_backup1 = os.environ.pop("MUSHER_API_URL", None)
-        env_backup2 = os.environ.pop("MUSH_API_URL", None)
-        env_backup3 = os.environ.pop("MUSHER_BASE_URL", None)
-        try:
-            with patch.dict(os.environ, {"MUSH_BASE_URL": "https://mushbase.dev"}, clear=False):
-                assert resolve_registry_url() == "https://mushbase.dev"
-        finally:
-            if env_backup1 is not None:
-                os.environ["MUSHER_API_URL"] = env_backup1
-            if env_backup2 is not None:
-                os.environ["MUSH_API_URL"] = env_backup2
-            if env_backup3 is not None:
-                os.environ["MUSHER_BASE_URL"] = env_backup3
 
     def test_default_url(self):
-        env_vars = ["MUSHER_API_URL", "MUSH_API_URL", "MUSHER_BASE_URL", "MUSH_BASE_URL"]
+        env_vars = ["MUSHER_API_URL", "MUSHER_BASE_URL"]
         backups = {k: os.environ.pop(k, None) for k in env_vars}
         try:
             assert resolve_registry_url() == "https://api.musher.dev"
@@ -197,10 +148,3 @@ class TestResolveRegistryUrl:
             for k, v in backups.items():
                 if v is not None:
                     os.environ[k] = v
-
-    def test_precedence_musher_api_url_over_mush(self):
-        with patch.dict(
-            os.environ,
-            {"MUSHER_API_URL": "https://first.dev", "MUSH_API_URL": "https://second.dev"},
-        ):
-            assert resolve_registry_url() == "https://first.dev"

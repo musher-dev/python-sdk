@@ -46,7 +46,7 @@ with musher.Client() as client:
 
 The SDK resolves credentials automatically in this order:
 
-1. **Environment variables** — `MUSHER_API_KEY` or `MUSH_API_KEY`
+1. **Environment variables** — `MUSHER_API_KEY`
 2. **OS keyring** — host-scoped service `musher/{hostname}`
 3. **Profile config** — `<config_dir>/config.toml` (see below)
 4. **File fallback** — `<config_dir>/api-key` (must be `0600` permissions)
@@ -55,7 +55,7 @@ The SDK resolves credentials automatically in this order:
 
 The registry URL is resolved from environment variables:
 
-- `MUSHER_API_URL`, `MUSH_API_URL`, `MUSHER_BASE_URL`, `MUSH_BASE_URL` (checked in order)
+- `MUSHER_API_URL`, `MUSHER_BASE_URL` (checked in order)
 - Default: `https://api.musher.dev`
 
 ### Programmatic Configuration

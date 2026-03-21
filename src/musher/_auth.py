@@ -13,15 +13,15 @@ _log = logging.getLogger(__name__)
 
 _DEFAULT_REGISTRY_URL = "https://api.musher.dev"
 
-_TOKEN_ENV_VARS = ("MUSHER_API_KEY", "MUSH_API_KEY")
-_URL_ENV_VARS = ("MUSHER_API_URL", "MUSH_API_URL", "MUSHER_BASE_URL", "MUSH_BASE_URL")
+_TOKEN_ENV_VARS = ("MUSHER_API_KEY",)
+_URL_ENV_VARS = ("MUSHER_API_URL", "MUSHER_BASE_URL")
 
 
 def resolve_registry_url() -> str:
     """Resolve the registry URL from environment variables or return the default.
 
-    Checks ``MUSHER_API_URL``, ``MUSH_API_URL``, ``MUSHER_BASE_URL``, ``MUSH_BASE_URL``
-    in order. Returns the first match (stripped of trailing ``/``) or the default.
+    Checks ``MUSHER_API_URL``, ``MUSHER_BASE_URL`` in order.
+    Returns the first match (stripped of trailing ``/``) or the default.
     """
     for var in _URL_ENV_VARS:
         value = os.environ.get(var)
@@ -33,7 +33,7 @@ def resolve_registry_url() -> str:
 def resolve_token(*, registry_url: str | None = None, profile: str = "default") -> str | None:
     """Resolve an API token using the credential chain.
 
-    1. Environment variables (``MUSHER_API_KEY``, ``MUSH_API_KEY``)
+    1. Environment variables (``MUSHER_API_KEY``)
     2. OS keyring — host-scoped service ``musher/{hostname}``
     3. Profile config file — ``<config_dir>/config.toml``
     4. File fallback — ``$config_dir/api-key`` (must be 0600)
