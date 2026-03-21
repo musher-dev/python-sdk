@@ -139,6 +139,35 @@ class TestAsyncClient:
             with pytest.raises(IntegrityError):
                 await client.pull("myorg/my-bundle:1.0.0")
 
+    @respx.mock
+    async def test_ref_caching_round_trip(self, config: MusherConfig):
+        """Unversioned resolve caches the ref, second call uses cache."""
+        route = respx.get(f"{_BASE}/v1/namespaces/myorg/bundles/my-bundle:resolve").mock(
+            return_value=httpx.Response(200, json=_RESOLVE_RESPONSE)
+        )
+        async with AsyncClient(config=config) as client:
+            result1 = await client.resolve("myorg/my-bundle")
+            assert result1.version == "1.0.0"
+            # Second resolve should hit cache
+            result2 = await client.resolve("myorg/my-bundle")
+            assert result2.version == "1.0.0"
+        # Only one HTTP call should have been made
+        assert len(route.calls) == 1
+
+    @respx.mock
+    async def test_manifest_freshness_check(self, config: MusherConfig):
+        """Versioned resolve caches manifest with freshness metadata."""
+        route = respx.get(f"{_BASE}/v1/namespaces/myorg/bundles/my-bundle:resolve").mock(
+            return_value=httpx.Response(200, json=_RESOLVE_RESPONSE)
+        )
+        async with AsyncClient(config=config) as client:
+            result1 = await client.resolve("myorg/my-bundle:1.0.0")
+            assert result1.version == "1.0.0"
+            # Second resolve should hit cache (manifest is fresh)
+            result2 = await client.resolve("myorg/my-bundle:1.0.0")
+            assert result2.version == "1.0.0"
+        assert len(route.calls) == 1
+
 
 class TestClient:
     def test_instantiation(self, config: MusherConfig):

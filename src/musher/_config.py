@@ -4,19 +4,19 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
-from pathlib import Path
+from typing import TYPE_CHECKING
 
+from musher._paths import (
+    cache_dir as _default_cache_dir,
+    config_dir as _default_config_dir,
+    data_dir as _default_data_dir,
+    state_dir as _default_state_dir,
+)
 
-def _xdg_cache_home() -> Path:
-    """Return XDG_CACHE_HOME, defaulting to ~/.cache."""
-    return Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
-
+if TYPE_CHECKING:
+    from pathlib import Path
 
 _DEFAULT_REGISTRY_URL = "https://api.musher.dev"
-
-
-def _default_cache_dir() -> Path:
-    return _xdg_cache_home() / "musher"
 
 
 @dataclass
@@ -26,6 +26,9 @@ class MusherConfig:
     token: str | None = None
     registry_url: str = _DEFAULT_REGISTRY_URL
     cache_dir: Path = field(default_factory=_default_cache_dir)
+    config_dir: Path = field(default_factory=_default_config_dir)
+    data_dir: Path = field(default_factory=_default_data_dir)
+    state_dir: Path = field(default_factory=_default_state_dir)
     verify_checksums: bool = True
     timeout: float = 60.0
     max_retries: int = 3
@@ -34,11 +37,14 @@ class MusherConfig:
 _global_config: MusherConfig | None = None
 
 
-def configure(
+def configure(  # noqa: PLR0913
     *,
     token: str | None = None,
     registry_url: str | None = None,
     cache_dir: Path | None = None,
+    config_dir: Path | None = None,
+    data_dir: Path | None = None,
+    state_dir: Path | None = None,
     verify_checksums: bool = True,
     timeout: float = 60.0,
     max_retries: int = 3,
@@ -49,6 +55,9 @@ def configure(
         token=token,
         registry_url=registry_url or os.environ.get("MUSHER_API_URL", _DEFAULT_REGISTRY_URL),
         cache_dir=cache_dir or _default_cache_dir(),
+        config_dir=config_dir or _default_config_dir(),
+        data_dir=data_dir or _default_data_dir(),
+        state_dir=state_dir or _default_state_dir(),
         verify_checksums=verify_checksums,
         timeout=timeout,
         max_retries=max_retries,

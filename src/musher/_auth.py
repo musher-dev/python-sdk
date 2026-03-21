@@ -5,14 +5,10 @@ from __future__ import annotations
 import logging
 import os
 import stat
-from pathlib import Path
+
+from musher._paths import config_dir
 
 _log = logging.getLogger(__name__)
-
-
-def _xdg_config_home() -> Path:
-    """Return XDG_CONFIG_HOME, defaulting to ~/.config."""
-    return Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
 
 
 def resolve_token() -> str | None:
@@ -20,7 +16,7 @@ def resolve_token() -> str | None:
 
     1. ``MUSHER_API_KEY`` environment variable
     2. OS keyring — service ``dev.musher.musher``, username ``api-key``
-    3. File fallback — ``$XDG_CONFIG_HOME/musher/api-key`` (must be 0600)
+    3. File fallback — ``$config_dir/api-key`` (must be 0600)
     """
     # 1. Environment variable
     env_token = os.environ.get("MUSHER_API_KEY")
@@ -50,8 +46,8 @@ def _try_keyring() -> str | None:
 
 
 def _try_file() -> str | None:
-    """Read token from $XDG_CONFIG_HOME/musher/api-key if permissions are safe."""
-    key_file = _xdg_config_home() / "musher" / "api-key"
+    """Read token from config_dir/api-key if permissions are safe."""
+    key_file = config_dir() / "api-key"
     if not key_file.is_file():
         return None
 

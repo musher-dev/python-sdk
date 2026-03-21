@@ -1,26 +1,11 @@
-"""Tests for _config module — XDG paths, env vars, defaults."""
+"""Tests for _config module — paths, env vars, defaults."""
 
 import os
 from pathlib import Path
 from unittest.mock import patch
 
 import musher._config as config_mod
-from musher._config import MusherConfig, _xdg_cache_home, get_config
-
-
-class TestXDGPaths:
-    def test_xdg_cache_home_default(self):
-        with patch.dict(os.environ, {}, clear=False):
-            env_backup = os.environ.pop("XDG_CACHE_HOME", None)
-            try:
-                assert _xdg_cache_home() == Path.home() / ".cache"
-            finally:
-                if env_backup is not None:
-                    os.environ["XDG_CACHE_HOME"] = env_backup
-
-    def test_xdg_cache_home_from_env(self, tmp_path: Path):
-        with patch.dict(os.environ, {"XDG_CACHE_HOME": str(tmp_path)}):
-            assert _xdg_cache_home() == tmp_path
+from musher._config import MusherConfig, configure, get_config
 
 
 class TestDefaults:
@@ -28,15 +13,46 @@ class TestDefaults:
         cfg = MusherConfig()
         assert cfg.timeout == 60.0
 
-    def test_default_cache_dir_uses_xdg(self):
+    def test_default_cache_dir_ends_with_musher(self):
         cfg = MusherConfig()
         assert cfg.cache_dir.name == "musher"
-        assert ".cache" in str(cfg.cache_dir)
+
+    def test_default_config_dir_ends_with_musher(self):
+        cfg = MusherConfig()
+        assert cfg.config_dir.name == "musher"
+
+    def test_default_data_dir_ends_with_musher(self):
+        cfg = MusherConfig()
+        assert cfg.data_dir.name == "musher"
+
+    def test_default_state_dir_ends_with_musher(self):
+        cfg = MusherConfig()
+        assert cfg.state_dir.name == "musher"
+
+
+class TestConfigure:
+    def test_configure_with_custom_dirs(self, tmp_path: Path):
+        configure(
+            cache_dir=tmp_path / "cache",
+            config_dir=tmp_path / "config",
+            data_dir=tmp_path / "data",
+            state_dir=tmp_path / "state",
+        )
+        cfg = get_config()
+        assert cfg.cache_dir == tmp_path / "cache"
+        assert cfg.config_dir == tmp_path / "config"
+        assert cfg.data_dir == tmp_path / "data"
+        assert cfg.state_dir == tmp_path / "state"
+
+    def test_configure_preserves_existing_fields(self):
+        configure(token="my-token", registry_url="https://custom.dev")
+        cfg = get_config()
+        assert cfg.token == "my-token"
+        assert cfg.registry_url == "https://custom.dev"
 
 
 class TestGetConfig:
     def test_auto_discovers_env_vars(self):
-        # Reset global config
         config_mod._global_config = None
         try:
             with (

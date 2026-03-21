@@ -48,7 +48,8 @@ class TestFileFallback:
         env_backup = os.environ.pop("MUSHER_API_KEY", None)
         try:
             with (
-                patch.dict(os.environ, {"XDG_CONFIG_HOME": str(tmp_path)}, clear=False),
+                patch("musher._paths.config_dir", return_value=tmp_path / "musher"),
+                patch("musher._auth.config_dir", return_value=tmp_path / "musher"),
                 patch("musher._auth._try_keyring", return_value=None),
             ):
                 assert resolve_token() == "file-token"
@@ -62,9 +63,9 @@ class TestFileFallback:
         key_file.write_text("file-token\n")
         key_file.chmod(0o640)
 
-        with patch.dict(os.environ, {"XDG_CONFIG_HOME": str(tmp_path)}):
+        with patch("musher._auth.config_dir", return_value=tmp_path / "musher"):
             assert _try_file() is None
 
     def test_missing_file_returns_none(self, tmp_path: Path):
-        with patch.dict(os.environ, {"XDG_CONFIG_HOME": str(tmp_path)}):
+        with patch("musher._auth.config_dir", return_value=tmp_path / "musher"):
             assert _try_file() is None

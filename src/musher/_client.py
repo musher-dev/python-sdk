@@ -42,7 +42,7 @@ class AsyncClient:
     def __init__(self, config: MusherConfig | None = None) -> None:
         self._config = config or get_config()
         self._http = HTTPTransport(self._config)
-        self._cache = BundleCache(self._config.cache_dir)
+        self._cache = BundleCache(self._config.cache_dir, registry_url=self._config.registry_url)
 
     async def __aenter__(self) -> AsyncClient:
         return self
@@ -66,10 +66,22 @@ class AsyncClient:
         """
         parsed = BundleRef.parse(ref)
 
+        # For unversioned refs, check ref cache first
+        if not parsed.version and not parsed.digest:
+            cached_version = self._cache.get_ref(parsed.namespace, parsed.slug, "latest")
+            if cached_version:
+                cached = self._cache.get_manifest(parsed.namespace, parsed.slug, cached_version)
+                if cached is not None and self._cache.is_manifest_fresh(
+                    parsed.namespace, parsed.slug, cached_version
+                ):
+                    return ResolveResult.model_validate(cached)
+
         # Check manifest cache for versioned refs
         if parsed.version:
             cached = self._cache.get_manifest(parsed.namespace, parsed.slug, parsed.version)
-            if cached is not None:
+            if cached is not None and self._cache.is_manifest_fresh(
+                parsed.namespace, parsed.slug, parsed.version
+            ):
                 return ResolveResult.model_validate(cached)
 
         params: dict[str, str] = {}
@@ -84,9 +96,12 @@ class AsyncClient:
         )
         result = ResolveResult.model_validate(response.json())
 
-        # Cache the manifest for versioned refs
-        if parsed.version:
-            self._cache.put_manifest(parsed.namespace, parsed.slug, parsed.version, response.json())
+        # Cache the manifest with metadata
+        if result.version:
+            self._cache.put_manifest(parsed.namespace, parsed.slug, result.version, response.json())
+            # Cache ref mapping for unversioned refs
+            if not parsed.version:
+                self._cache.put_ref(parsed.namespace, parsed.slug, "latest", result.version)
 
         return result
 

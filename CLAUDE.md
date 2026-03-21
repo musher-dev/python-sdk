@@ -8,7 +8,8 @@ Python SDK for programmatically pulling and using Musher bundle assets.
 src/musher/
 ├── _types.py      # Enums, BundleRef, OCI constants (no deps)
 ├── _errors.py     # Exception hierarchy (no deps)
-├── _config.py     # Global configuration (deps: _errors)
+├── _paths.py      # Platform-aware directory resolution (deps: platformdirs)
+├── _config.py     # Global configuration (deps: _paths)
 ├── _bundle.py     # Pydantic models for bundles/manifests (deps: _types)
 ├── _cache.py      # XDG-compliant disk cache (deps: _types, _errors)
 ├── _oci.py        # Low-level OCI interaction (deps: _types, _errors)

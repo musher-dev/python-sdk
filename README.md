@@ -1,14 +1,14 @@
 # Musher Python SDK
 
 [![CI](https://github.com/musher-dev/python-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/musher-dev/python-sdk/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/musher)](https://pypi.org/project/musher/)
+[![PyPI](https://img.shields.io/pypi/v/musher-sdk)](https://pypi.org/project/musher-sdk/)
 
 Python SDK for the [Musher](https://musher.dev) bundle distribution platform. Pull versioned AI agent asset bundles (prompts, configs, tool definitions) into your Python applications.
 
 ## Installation
 
 ```bash
-pip install musher
+pip install musher-sdk
 ```
 
 ## Quick Start

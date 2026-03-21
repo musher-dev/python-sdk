@@ -5,10 +5,36 @@ from __future__ import annotations
 import json
 import shutil
 import tempfile
+import time
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 from musher._config import get_config
+
+_CACHEDIR_TAG_HEADER = (
+    "Signature: 8a477f597d28d172789f06886806bc55\n"
+    "# This file is a cache directory tag created by musher.\n"
+    "# For information about cache directory tags, see:\n"
+    "#   https://bford.info/cachedir/spec.html\n"
+)
+
+_DEFAULT_MANIFEST_TTL = 86400
+_DEFAULT_REF_TTL = 300
+
+
+def _host_id_from_url(url: str) -> str:
+    """Extract and sanitize a hostname identifier from a registry URL.
+
+    Replaces ``:``, ``/``, and other path-unsafe characters with ``_``.
+    """
+    parsed = urlparse(url)
+    host = parsed.hostname or "localhost"
+    port = parsed.port
+    if port:
+        return f"{host}_{port}"
+    return host
 
 
 class BundleCache:
@@ -16,17 +42,40 @@ class BundleCache:
 
     Layout::
 
-        $XDG_CACHE_HOME/musher/
-          blobs/sha256/<first-2-chars>/<full-hash>
-          manifests/<namespace>/<slug>/<version>.json
+        $cache_root/
+          CACHEDIR.TAG
+          blobs/sha256/<prefix>/<digest>
+          manifests/<host-id>/<ns>/<slug>/<version>.json
+          manifests/<host-id>/<ns>/<slug>/<version>.meta.json
+          refs/<host-id>/<ns>/<slug>/<ref>.json
+          temp/
     """
 
-    def __init__(self, cache_dir: Path | None = None) -> None:
+    def __init__(self, cache_dir: Path | None = None, *, registry_url: str | None = None) -> None:
         self._cache_dir = cache_dir or get_config().cache_dir
+        registry_url = registry_url or get_config().registry_url
+        self._host_id = _host_id_from_url(registry_url)
+        self._tag_written = False
 
     @property
     def cache_dir(self) -> Path:
         return self._cache_dir
+
+    @property
+    def host_id(self) -> str:
+        return self._host_id
+
+    # ── CACHEDIR.TAG ────────────────────────────────────────────────
+
+    def _ensure_cachedir_tag(self) -> None:
+        """Write CACHEDIR.TAG at cache root on first write operation."""
+        if self._tag_written:
+            return
+        tag_path = self._cache_dir / "CACHEDIR.TAG"
+        if not tag_path.is_file():
+            tag_path.parent.mkdir(parents=True, exist_ok=True)
+            tag_path.write_text(_CACHEDIR_TAG_HEADER)
+        self._tag_written = True
 
     # ── Blob operations ────────────────────────────────────────────
 
@@ -39,17 +88,9 @@ class BundleCache:
 
     def put_blob(self, content_sha256: str, data: bytes) -> None:
         """Store a blob using atomic write (tmp + rename)."""
+        self._ensure_cachedir_tag()
         path = self._blob_path(content_sha256)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        fd, tmp_name = tempfile.mkstemp(dir=path.parent)
-        tmp = Path(tmp_name)
-        try:
-            with open(fd, "wb") as f:  # noqa: PTH123
-                f.write(data)
-            tmp.rename(path)
-        except BaseException:
-            tmp.unlink(missing_ok=True)
-            raise
+        self._atomic_write_bytes(path, data)
 
     # ── Manifest operations ────────────────────────────────────────
 
@@ -60,21 +101,138 @@ class BundleCache:
             return json.loads(path.read_text())
         return None
 
-    def put_manifest(self, namespace: str, slug: str, version: str, data: dict[str, Any]) -> None:
-        """Store a manifest as JSON using atomic write."""
+    def put_manifest(
+        self,
+        namespace: str,
+        slug: str,
+        version: str,
+        data: dict[str, Any],
+        *,
+        oci_digest: str | None = None,
+        ttl: int = _DEFAULT_MANIFEST_TTL,
+    ) -> None:
+        """Store a manifest as JSON with a freshness sidecar."""
+        self._ensure_cachedir_tag()
         path = self._manifest_path(namespace, slug, version)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        fd, tmp_name = tempfile.mkstemp(dir=path.parent, suffix=".json")
-        tmp = Path(tmp_name)
+        self._atomic_write_json(path, data)
+
+        # Write .meta.json sidecar
+        meta_path = self._meta_path(namespace, slug, version)
+        meta = {
+            "fetchedAt": datetime.now(UTC).isoformat(),
+            "ttlSeconds": ttl,
+            "ociDigest": oci_digest,
+        }
+        self._atomic_write_json(meta_path, meta)
+
+    def is_manifest_fresh(self, namespace: str, slug: str, version: str) -> bool:
+        """Check whether a cached manifest is still within its TTL."""
+        meta_path = self._meta_path(namespace, slug, version)
+        if not meta_path.is_file():
+            return False
         try:
-            with open(fd, "w") as f:  # noqa: PTH123
-                json.dump(data, f)
-            tmp.rename(path)
-        except BaseException:
-            tmp.unlink(missing_ok=True)
-            raise
+            meta = json.loads(meta_path.read_text())
+            fetched_at = datetime.fromisoformat(meta["fetchedAt"])
+            ttl = meta.get("ttlSeconds", _DEFAULT_MANIFEST_TTL)
+            age = (datetime.now(UTC) - fetched_at).total_seconds()
+            return age < ttl
+        except (KeyError, ValueError, json.JSONDecodeError):
+            return False
+
+    # ── Ref operations ─────────────────────────────────────────────
+
+    def get_ref(self, namespace: str, slug: str, ref: str) -> str | None:
+        """Retrieve a cached ref → version mapping. Returns ``None`` on miss or expiry."""
+        path = self._ref_path(namespace, slug, ref)
+        if not path.is_file():
+            return None
+        try:
+            data = json.loads(path.read_text())
+            expires_at = data.get("expiresAt", 0)
+            if time.time() > expires_at:
+                path.unlink(missing_ok=True)
+                return None
+            return data.get("version")
+        except (json.JSONDecodeError, KeyError):
+            return None
+
+    def put_ref(
+        self,
+        namespace: str,
+        slug: str,
+        ref: str,
+        version: str,
+        *,
+        ttl: int = _DEFAULT_REF_TTL,
+    ) -> None:
+        """Cache a ref → version alias mapping with TTL."""
+        self._ensure_cachedir_tag()
+        path = self._ref_path(namespace, slug, ref)
+        data = {
+            "version": version,
+            "cachedAt": datetime.now(UTC).isoformat(),
+            "expiresAt": time.time() + ttl,
+        }
+        self._atomic_write_json(path, data)
 
     # ── Maintenance ────────────────────────────────────────────────
+
+    def clean(self) -> int:
+        """Remove expired manifests (stale meta) and refs. Returns count of removed entries."""
+        removed = 0
+
+        # Clean expired manifests
+        manifests_dir = self._cache_dir / "manifests" / self._host_id
+        if manifests_dir.is_dir():
+            for meta_file in manifests_dir.rglob("*.meta.json"):
+                try:
+                    meta = json.loads(meta_file.read_text())
+                    fetched_at = datetime.fromisoformat(meta["fetchedAt"])
+                    ttl = meta.get("ttlSeconds", _DEFAULT_MANIFEST_TTL)
+                    age = (datetime.now(UTC) - fetched_at).total_seconds()
+                    if age >= ttl:
+                        # Remove both manifest and meta
+                        manifest_file = meta_file.with_name(
+                            meta_file.name.replace(".meta.json", ".json")
+                        )
+                        manifest_file.unlink(missing_ok=True)
+                        meta_file.unlink(missing_ok=True)
+                        removed += 1
+                except (json.JSONDecodeError, KeyError, ValueError):
+                    continue
+
+        # Clean expired refs
+        refs_dir = self._cache_dir / "refs" / self._host_id
+        if refs_dir.is_dir():
+            for ref_file in refs_dir.rglob("*.json"):
+                try:
+                    data = json.loads(ref_file.read_text())
+                    if time.time() > data.get("expiresAt", 0):
+                        ref_file.unlink(missing_ok=True)
+                        removed += 1
+                except (json.JSONDecodeError, KeyError):
+                    continue
+
+        return removed
+
+    def purge(self, namespace: str, slug: str, version: str | None = None) -> None:
+        """Remove specific cached entries for a bundle.
+
+        If *version* is given, removes only that version's manifest and meta.
+        Otherwise removes all manifests, refs, and meta for the namespace/slug.
+        """
+        if version:
+            self._manifest_path(namespace, slug, version).unlink(missing_ok=True)
+            self._meta_path(namespace, slug, version).unlink(missing_ok=True)
+        else:
+            # Remove all manifests for this ns/slug
+            manifest_dir = self._cache_dir / "manifests" / self._host_id / namespace / slug
+            if manifest_dir.is_dir():
+                shutil.rmtree(manifest_dir)
+            # Remove all refs for this ns/slug
+            ref_dir = self._cache_dir / "refs" / self._host_id / namespace / slug
+            if ref_dir.is_dir():
+                shutil.rmtree(ref_dir)
 
     def clear(self) -> None:
         """Remove all cached data."""
@@ -87,4 +245,41 @@ class BundleCache:
         return self._cache_dir / "blobs" / "sha256" / content_sha256[:2] / content_sha256
 
     def _manifest_path(self, namespace: str, slug: str, version: str) -> Path:
-        return self._cache_dir / "manifests" / namespace / slug / f"{version}.json"
+        return self._cache_dir / "manifests" / self._host_id / namespace / slug / f"{version}.json"
+
+    def _meta_path(self, namespace: str, slug: str, version: str) -> Path:
+        return (
+            self._cache_dir
+            / "manifests"
+            / self._host_id
+            / namespace
+            / slug
+            / f"{version}.meta.json"
+        )
+
+    def _ref_path(self, namespace: str, slug: str, ref: str) -> Path:
+        return self._cache_dir / "refs" / self._host_id / namespace / slug / f"{ref}.json"
+
+    def _atomic_write_bytes(self, path: Path, data: bytes) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fd, tmp_name = tempfile.mkstemp(dir=path.parent)
+        tmp = Path(tmp_name)
+        try:
+            with open(fd, "wb") as f:  # noqa: PTH123
+                f.write(data)
+            tmp.rename(path)
+        except BaseException:
+            tmp.unlink(missing_ok=True)
+            raise
+
+    def _atomic_write_json(self, path: Path, data: dict[str, Any]) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fd, tmp_name = tempfile.mkstemp(dir=path.parent, suffix=".json")
+        tmp = Path(tmp_name)
+        try:
+            with open(fd, "w") as f:  # noqa: PTH123
+                json.dump(data, f)
+            tmp.rename(path)
+        except BaseException:
+            tmp.unlink(missing_ok=True)
+            raise
