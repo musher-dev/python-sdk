@@ -8,18 +8,18 @@ from pathlib import Path
 
 import musher
 
-musher.configure(token="your-token-here")
+# Credentials auto-discovered from MUSHER_API_KEY env var, keyring,
+# or credential file. To override: musher.configure(token="your-token")
 
-# Pull the full bundle (will raise NotImplementedError until pull is implemented)
 bundle = musher.pull("acme/agent-toolkit:2.0.0")
 
 # Select only the skills needed for this session
-selection = bundle.select(skills=["web-search", "calculator"])
+selection = bundle.select(skills=["csv-insights", "incident-summary"])
 
-# Export the selection as a Claude plugin
+# PREVIEW: export_claude_plugin() is not yet implemented — will raise NotImplementedError.
 plugin = selection.export_claude_plugin("safe-tools", dest=Path("./plugins"))
 print(f"Plugin exported to: {plugin.path}")
 
-# Verify only 2 skills are present
+# Verify only the selected skills are present
 for skill in selection.skills():
     print(f"  Skill: {skill.name} — {skill.description}")

@@ -1,14 +1,10 @@
-"""Example: Use versioned prompts and toolsets from a Musher bundle.
-
-Demonstrates pulling prompt templates and tool configurations from a bundle
-for use with PydanticAI or similar frameworks that consume structured config.
-"""
+"""Example: Access versioned prompts, toolsets, and agent specs from a bundle."""
 
 import musher
 
-musher.configure(token="your-token-here")
+# Credentials auto-discovered from MUSHER_API_KEY env var, keyring,
+# or credential file. To override: musher.configure(token="your-token")
 
-# Pull a bundle with prompts and toolsets (will raise NotImplementedError until pull is implemented)
 bundle = musher.pull("acme/prompt-library:1.2.0")
 
 # Access versioned prompts by name
