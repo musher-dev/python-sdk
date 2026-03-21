@@ -29,8 +29,8 @@ class MusherConfig:
     data_dir: Path = field(default_factory=_default_data_dir)
     state_dir: Path = field(default_factory=_default_state_dir)
     verify_checksums: bool = True
-    timeout: float = 60.0
-    max_retries: int = 3
+    timeout: float = 30.0
+    max_retries: int = 2
 
 
 _global_config: MusherConfig | None = None
@@ -47,8 +47,8 @@ def configure(  # noqa: PLR0913
     data_dir: Path | None = None,
     state_dir: Path | None = None,
     verify_checksums: bool = True,
-    timeout: float = 60.0,
-    max_retries: int = 3,
+    timeout: float = 30.0,
+    max_retries: int = 2,
 ) -> None:
     """Set global SDK configuration.
 
@@ -60,9 +60,9 @@ def configure(  # noqa: PLR0913
 
     global _global_config  # noqa: PLW0603
 
-    # Resolve URL and config_dir first so token resolution can use them
+    # Resolve URL and data_dir first so token resolution can use them
     resolved_url = registry_url or api_url or resolve_registry_url()
-    resolved_config_dir = config_dir or _default_config_dir()
+    resolved_data_dir = data_dir or _default_data_dir()
 
     # Resolve token: explicit token > explicit api_key > credential chain
     if token is not _UNSET:
@@ -70,14 +70,14 @@ def configure(  # noqa: PLR0913
     elif api_key is not _UNSET:
         resolved_token = api_key  # type: ignore[assignment]
     else:
-        resolved_token = resolve_token(registry_url=resolved_url, config_dir=resolved_config_dir)
+        resolved_token = resolve_token(registry_url=resolved_url, data_dir=resolved_data_dir)
 
     _global_config = MusherConfig(
         token=resolved_token,
         registry_url=resolved_url,
         cache_dir=cache_dir or _default_cache_dir(),
-        config_dir=resolved_config_dir,
-        data_dir=data_dir or _default_data_dir(),
+        config_dir=config_dir or _default_config_dir(),
+        data_dir=resolved_data_dir,
         state_dir=state_dir or _default_state_dir(),
         verify_checksums=verify_checksums,
         timeout=timeout,

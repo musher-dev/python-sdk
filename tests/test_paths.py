@@ -1,6 +1,7 @@
 """Tests for _paths module — platform-aware directory resolution."""
 
 import os
+import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -126,7 +127,6 @@ class TestWindowsPaths:
                     ("config", config_dir),
                     ("data", data_dir),
                     ("state", state_dir),
-                    ("runtime", runtime_dir),
                 ]:
                     branded_var = (
                         f"MUSHER_{category.upper()}_HOME"
@@ -218,3 +218,61 @@ class TestDirectoryFunctions:
             assert data_dir() == tmp_path / "data"
             assert state_dir() == tmp_path / "state"
             assert runtime_dir() == tmp_path / "runtime"
+
+
+class TestRuntimeDirPlatform:
+    def test_linux_uses_platformdirs(self):
+        env_backup_runtime = os.environ.pop("MUSHER_RUNTIME_DIR", None)
+        env_backup_home = os.environ.pop("MUSHER_HOME", None)
+        try:
+            with patch("musher._paths.sys") as mock_sys:
+                mock_sys.platform = "linux"
+                result = runtime_dir()
+                assert isinstance(result, Path)
+                assert "musher" in str(result)
+        finally:
+            if env_backup_runtime is not None:
+                os.environ["MUSHER_RUNTIME_DIR"] = env_backup_runtime
+            if env_backup_home is not None:
+                os.environ["MUSHER_HOME"] = env_backup_home
+
+    def test_macos_uses_temp(self):
+        env_backup_runtime = os.environ.pop("MUSHER_RUNTIME_DIR", None)
+        env_backup_home = os.environ.pop("MUSHER_HOME", None)
+        try:
+            with patch("musher._paths.sys") as mock_sys:
+                mock_sys.platform = "darwin"
+                result = runtime_dir()
+                assert result == Path(tempfile.gettempdir()) / "musher" / "run"
+        finally:
+            if env_backup_runtime is not None:
+                os.environ["MUSHER_RUNTIME_DIR"] = env_backup_runtime
+            if env_backup_home is not None:
+                os.environ["MUSHER_HOME"] = env_backup_home
+
+    def test_windows_uses_temp(self):
+        env_backup_runtime = os.environ.pop("MUSHER_RUNTIME_DIR", None)
+        env_backup_home = os.environ.pop("MUSHER_HOME", None)
+        try:
+            with patch("musher._paths.sys") as mock_sys:
+                mock_sys.platform = "win32"
+                result = runtime_dir()
+                assert result == Path(tempfile.gettempdir()) / "musher" / "run"
+        finally:
+            if env_backup_runtime is not None:
+                os.environ["MUSHER_RUNTIME_DIR"] = env_backup_runtime
+            if env_backup_home is not None:
+                os.environ["MUSHER_HOME"] = env_backup_home
+
+    def test_branded_var_overrides_platform(self, tmp_path: Path):
+        with patch.dict(os.environ, {"MUSHER_RUNTIME_DIR": str(tmp_path)}, clear=False):
+            assert runtime_dir() == tmp_path
+
+    def test_musher_home_overrides_platform(self, tmp_path: Path):
+        env_backup_runtime = os.environ.pop("MUSHER_RUNTIME_DIR", None)
+        try:
+            with patch.dict(os.environ, {"MUSHER_HOME": str(tmp_path)}, clear=False):
+                assert runtime_dir() == tmp_path / "runtime"
+        finally:
+            if env_backup_runtime is not None:
+                os.environ["MUSHER_RUNTIME_DIR"] = env_backup_runtime

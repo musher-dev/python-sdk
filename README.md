@@ -48,14 +48,13 @@ The SDK resolves credentials automatically in this order:
 
 1. **Environment variables** — `MUSHER_API_KEY`
 2. **OS keyring** — host-scoped service `musher/{hostname}`
-3. **Profile config** — `<config_dir>/config.toml` (see below)
-4. **File fallback** — `<config_dir>/api-key` (must be `0600` permissions)
+3. **File fallback** — `<data_dir>/credentials/<host_id>/api-key` (must be `0600` permissions)
 
 ### Registry URL
 
 The registry URL is resolved from environment variables:
 
-- `MUSHER_API_URL`, `MUSHER_BASE_URL` (checked in order)
+- `MUSHER_API_URL`
 - Default: `https://api.musher.dev`
 
 ### Programmatic Configuration
@@ -69,18 +68,6 @@ musher.configure(
     api_url="https://custom.dev",  # or registry_url="https://custom.dev"
     cache_dir=Path("/tmp/cache"),
 )
-```
-
-### Profile Config File
-
-Create `<config_dir>/config.toml`:
-
-```toml
-[profile.default]
-api_key = "mush_..."
-
-[profile.staging]
-api_key = "mush_staging_..."
 ```
 
 ### Cache Behavior

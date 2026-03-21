@@ -9,9 +9,9 @@ from musher._config import MusherConfig, configure, get_config
 
 
 class TestDefaults:
-    def test_default_timeout_is_60(self):
+    def test_default_timeout_is_30(self):
         cfg = MusherConfig()
-        assert cfg.timeout == 60.0
+        assert cfg.timeout == 30.0
 
     def test_default_cache_dir_ends_with_musher(self):
         cfg = MusherConfig()
@@ -83,15 +83,15 @@ class TestConfigure:
             configure(api_url="https://staging.musher.dev")
         call_kwargs = mock_resolve.call_args[1]
         assert call_kwargs["registry_url"] == "https://staging.musher.dev"
-        assert "config_dir" in call_kwargs
+        assert "data_dir" in call_kwargs
 
-    def test_configure_passes_config_dir_to_resolve_token(self, tmp_path: Path):
-        """configure(config_dir=...) passes that dir to resolve_token."""
-        custom_dir = tmp_path / "custom-config"
+    def test_configure_passes_data_dir_to_resolve_token(self, tmp_path: Path):
+        """configure(data_dir=...) passes that dir to resolve_token."""
+        custom_dir = tmp_path / "custom-data"
         with patch("musher._auth.resolve_token", return_value="tok") as mock_resolve:
-            configure(config_dir=custom_dir)
+            configure(data_dir=custom_dir)
         mock_resolve.assert_called_once_with(
-            registry_url="https://api.musher.dev", config_dir=custom_dir
+            registry_url="https://api.musher.dev", data_dir=custom_dir
         )
 
 

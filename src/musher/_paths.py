@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import sys
+import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -75,5 +76,28 @@ def state_dir() -> Path:
 
 
 def runtime_dir() -> Path:
-    """Return the runtime root directory."""
-    return _resolve_root("MUSHER_RUNTIME_DIR", "runtime", user_runtime_path)
+    """Return the runtime root directory.
+
+    On non-Linux platforms (macOS, Windows), uses a temp-based path instead of
+    ``platformdirs`` to match the TypeScript SDK behavior.
+    """
+    # 1. Branded env var
+    branded = os.environ.get("MUSHER_RUNTIME_DIR")
+    if branded:
+        p = Path(branded)
+        if p.is_absolute():
+            return p
+
+    # 2. MUSHER_HOME umbrella
+    home = os.environ.get("MUSHER_HOME")
+    if home:
+        p = Path(home)
+        if p.is_absolute():
+            return p / "runtime"
+
+    # 3. Linux: platformdirs (XDG)
+    if sys.platform == "linux":
+        return user_runtime_path(APP_NAME)
+
+    # 4. Non-Linux: temp-based
+    return Path(tempfile.gettempdir()) / APP_NAME / "run"

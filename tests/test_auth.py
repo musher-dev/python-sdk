@@ -72,13 +72,13 @@ class TestKeyring:
 
 
 def _write_host_scoped_key(
-    config_dir: Path,
+    data_dir: Path,
     token: str,
     host: str = "api.musher.dev",
     mode: int = 0o600,
 ) -> Path:
     """Helper to create a host-scoped credential file."""
-    key_file = config_dir / "credentials" / host / "api-key"
+    key_file = data_dir / "credentials" / host / "api-key"
     key_file.parent.mkdir(parents=True, exist_ok=True)
     key_file.write_text(f"{token}\n")
     key_file.chmod(mode)
@@ -93,7 +93,7 @@ class TestFileFallback:
         env_backup = os.environ.pop("MUSHER_API_KEY", None)
         try:
             with patch("musher._auth._try_keyring", return_value=None):
-                assert resolve_token(config_dir=config) == "file-token"
+                assert resolve_token(data_dir=config) == "file-token"
         finally:
             if env_backup is not None:
                 os.environ["MUSHER_API_KEY"] = env_backup
@@ -102,17 +102,17 @@ class TestFileFallback:
         config = tmp_path / "musher"
         _write_host_scoped_key(config, "file-token", mode=0o640)
 
-        assert _try_file(config_dir=config) is None
+        assert _try_file(data_dir=config) is None
 
     def test_missing_file_returns_none(self, tmp_path: Path):
-        assert _try_file(config_dir=tmp_path / "musher") is None
+        assert _try_file(data_dir=tmp_path / "musher") is None
 
-    def test_try_file_with_custom_config_dir(self, tmp_path: Path):
-        """_try_file uses config_dir param instead of default."""
+    def test_try_file_with_custom_data_dir(self, tmp_path: Path):
+        """_try_file uses data_dir param instead of default."""
         config = tmp_path / "custom-config"
         _write_host_scoped_key(config, "custom-token")
 
-        assert _try_file(config_dir=config) == "custom-token"
+        assert _try_file(data_dir=config) == "custom-token"
 
     def test_reads_host_scoped_credential_file(self, tmp_path: Path):
         """Host-scoped credential file is found."""
@@ -120,7 +120,7 @@ class TestFileFallback:
         _write_host_scoped_key(config, "host-token", host="custom.registry.dev")
 
         assert (
-            _try_file(registry_url="https://custom.registry.dev", config_dir=config) == "host-token"
+            _try_file(registry_url="https://custom.registry.dev", data_dir=config) == "host-token"
         )
 
     def test_host_scoped_with_port(self, tmp_path: Path):
@@ -128,7 +128,7 @@ class TestFileFallback:
         config = tmp_path / "musher"
         _write_host_scoped_key(config, "port-token", host="localhost_8080")
 
-        assert _try_file(registry_url="https://localhost:8080", config_dir=config) == "port-token"
+        assert _try_file(registry_url="https://localhost:8080", data_dir=config) == "port-token"
 
 
 class TestResolveRegistryUrl:
@@ -136,17 +136,8 @@ class TestResolveRegistryUrl:
         with patch.dict(os.environ, {"MUSHER_API_URL": "https://custom.dev/"}, clear=False):
             assert resolve_registry_url() == "https://custom.dev"
 
-    def test_musher_base_url(self):
-        env_backup1 = os.environ.pop("MUSHER_API_URL", None)
-        try:
-            with patch.dict(os.environ, {"MUSHER_BASE_URL": "https://base.dev/"}, clear=False):
-                assert resolve_registry_url() == "https://base.dev"
-        finally:
-            if env_backup1 is not None:
-                os.environ["MUSHER_API_URL"] = env_backup1
-
     def test_default_url(self):
-        env_vars = ["MUSHER_API_URL", "MUSHER_BASE_URL"]
+        env_vars = ["MUSHER_API_URL"]
         backups = {k: os.environ.pop(k, None) for k in env_vars}
         try:
             assert resolve_registry_url() == "https://api.musher.dev"

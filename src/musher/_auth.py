@@ -16,13 +16,13 @@ _log = logging.getLogger(__name__)
 _DEFAULT_REGISTRY_URL = "https://api.musher.dev"
 
 _TOKEN_ENV_VARS = ("MUSHER_API_KEY",)
-_URL_ENV_VARS = ("MUSHER_API_URL", "MUSHER_BASE_URL")
+_URL_ENV_VARS = ("MUSHER_API_URL",)
 
 
 def resolve_registry_url() -> str:
     """Resolve the registry URL from environment variables or return the default.
 
-    Checks ``MUSHER_API_URL``, ``MUSHER_BASE_URL`` in order.
+    Checks ``MUSHER_API_URL``.
     Returns the first match (stripped of trailing ``/``) or the default.
     """
     for var in _URL_ENV_VARS:
@@ -35,13 +35,13 @@ def resolve_registry_url() -> str:
 def resolve_token(
     *,
     registry_url: str | None = None,
-    config_dir: Path | None = None,
+    data_dir: Path | None = None,
 ) -> str | None:
     """Resolve an API token using the credential chain.
 
     1. Environment variables (``MUSHER_API_KEY``)
     2. OS keyring — host-scoped service ``musher/{host}``
-    3. File fallback — ``<config_dir>/credentials/<host_id>/api-key`` (must be 0600)
+    3. File fallback — ``<data_dir>/credentials/<host_id>/api-key`` (must be 0600)
     """
     # 1. Environment variables
     for var in _TOKEN_ENV_VARS:
@@ -55,7 +55,7 @@ def resolve_token(
         return keyring_token
 
     # 3. File fallback (host-scoped)
-    return _try_file(registry_url=registry_url, config_dir=config_dir)
+    return _try_file(registry_url=registry_url, data_dir=data_dir)
 
 
 def _try_keyring(*, registry_url: str | None = None) -> str | None:
@@ -100,17 +100,17 @@ def _read_key_file(path: Path) -> str | None:
 def _try_file(
     *,
     registry_url: str | None = None,
-    config_dir: Path | None = None,
+    data_dir: Path | None = None,
 ) -> str | None:
     """Read token from host-scoped credential file."""
-    if config_dir is None:
-        from musher._paths import config_dir as _default_config_dir  # noqa: PLC0415
+    if data_dir is None:
+        from musher._paths import data_dir as _default_data_dir  # noqa: PLC0415
 
-        config_dir = _default_config_dir()
+        data_dir = _default_data_dir()
 
     url = registry_url or resolve_registry_url()
     host = _host_id(url)
 
-    # Host-scoped: <config_dir>/credentials/<host_id>/api-key
-    host_scoped = config_dir / "credentials" / host / "api-key"
+    # Host-scoped: <data_dir>/credentials/<host_id>/api-key
+    host_scoped = data_dir / "credentials" / host / "api-key"
     return _read_key_file(host_scoped)
