@@ -4,6 +4,8 @@ Examples for the Musher Python SDK, organized by use case.
 
 ## Prerequisites
 
+Requires Python **>=3.13**.
+
 ```bash
 pip install musher-sdk
 ```
@@ -33,7 +35,7 @@ To override explicitly in code: `musher.configure(token="your-token")`.
 | `claude/export_plugin.py` | Select skills and export as a Claude plugin | — | Preview |
 | `openai/local_shell_skill.py` | Export a skill as a local directory for OpenAI | — | Preview |
 | `openai/hosted_inline_skill.py` | Export a skill as an inline zip for OpenAI | — | Preview |
-| `pydantic_ai/system_prompt_from_bundle.py` | Use bundle prompts with a PydanticAI Agent | `pydantic-ai` | Preview |
+| `pydantic_ai/instructions_from_bundle.py` | Use bundle prompts as PydanticAI agent instructions | `pydantic-ai` | Preview |
 
 **Working** examples use only implemented SDK methods and will run end-to-end.
 

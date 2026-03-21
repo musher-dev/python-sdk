@@ -55,7 +55,12 @@ class TestOpenAIInlineSkill:
         )
         d = skill.to_dict()
         assert d == {
+            "type": "inline",
             "name": "calc",
             "description": "Calculator",
-            "content_base64": "dGVzdA==",
+            "source": {
+                "type": "base64",
+                "media_type": "application/zip",
+                "data": "dGVzdA==",
+            },
         }

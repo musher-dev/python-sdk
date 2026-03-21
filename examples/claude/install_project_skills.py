@@ -8,6 +8,9 @@ from pathlib import Path
 
 import musher
 
+# NOTE: Bundle references below (e.g. "acme/agent-toolkit:2.0.0") are
+# placeholders. Replace with a real bundle ref from your Musher registry.
+
 # Credentials auto-discovered from MUSHER_API_KEY env var, keyring,
 # or credential file. To override: musher.configure(token="your-token")
 
@@ -17,6 +20,8 @@ bundle = musher.pull("acme/agent-toolkit:2.0.0")
 skills_dir = Path(".claude/skills")
 
 # PREVIEW: install_claude_skills() is not yet implemented — will raise NotImplementedError.
+# clean=True removes stale Musher-managed skill installs for this bundle
+# from the target directory. It does NOT affect unrelated user-managed skills.
 bundle.install_claude_skills(skills_dir, clean=True)
 
 print(f"Installed {len(bundle.skills())} skills to {skills_dir}")

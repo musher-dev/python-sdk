@@ -168,11 +168,3 @@ class BundleSelection:
     ) -> ClaudePluginExport:
         """Export selected resources as a Claude plugin."""
         raise NotImplementedError
-
-    def export_openai_local_skill(self, dest: Path | None = None) -> OpenAILocalSkill:
-        """Export selected resources for OpenAI local-path consumption."""
-        raise NotImplementedError
-
-    def export_openai_inline_skill(self) -> OpenAIInlineSkill:
-        """Export selected resources as an inline base64 zip for OpenAI."""
-        raise NotImplementedError

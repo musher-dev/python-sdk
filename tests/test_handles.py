@@ -157,7 +157,3 @@ class TestBundleSelection:
         sel = self._make_selection()
         with pytest.raises(NotImplementedError):
             sel.export_claude_plugin("test")
-        with pytest.raises(NotImplementedError):
-            sel.export_openai_local_skill()
-        with pytest.raises(NotImplementedError):
-            sel.export_openai_inline_skill()

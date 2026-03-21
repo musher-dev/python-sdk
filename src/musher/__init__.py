@@ -72,6 +72,8 @@ __all__ = [
     "get_config",
     "pull",
     "pull_async",
+    "resolve",
+    "resolve_async",
     "resolve_registry_url",
 ]
 
@@ -86,3 +88,15 @@ async def pull_async(ref: str) -> Bundle:
     """Pull a bundle using the global configuration (async convenience)."""
     async with AsyncClient() as client:
         return await client.pull(ref)
+
+
+def resolve(ref: str) -> ResolveResult:
+    """Resolve a bundle reference without pulling (sync convenience)."""
+    with Client() as client:
+        return client.resolve(ref)
+
+
+async def resolve_async(ref: str) -> ResolveResult:
+    """Resolve a bundle reference without pulling (async convenience)."""
+    async with AsyncClient() as client:
+        return await client.resolve(ref)

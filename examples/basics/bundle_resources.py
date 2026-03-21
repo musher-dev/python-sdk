@@ -2,6 +2,9 @@
 
 import musher
 
+# NOTE: Bundle references below (e.g. "acme/prompt-library:1.2.0") are
+# placeholders. Replace with a real bundle ref from your Musher registry.
+
 # Credentials auto-discovered from MUSHER_API_KEY env var, keyring,
 # or credential file. To override: musher.configure(token="your-token")
 

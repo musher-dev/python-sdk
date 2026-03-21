@@ -1,0 +1,28 @@
+"""Example: Use a Musher bundle prompt as PydanticAI agent instructions.
+
+Pulls versioned prompts from a Musher bundle and wires them into a
+PydanticAI Agent as the instructions.
+
+Requires: pip install pydantic-ai
+"""
+
+from pydantic_ai import Agent
+
+import musher
+
+# NOTE: Bundle references below (e.g. "acme/prompt-library:1.2.0") are
+# placeholders. Replace with a real bundle ref from your Musher registry.
+
+# Credentials auto-discovered from MUSHER_API_KEY env var, keyring,
+# or credential file. To override: musher.configure(token="your-token")
+
+bundle = musher.pull("acme/prompt-library:1.2.0")
+
+# Load versioned instructions from the bundle
+instructions_text = bundle.prompt("system").text()
+
+# Create a PydanticAI agent with bundle-managed instructions
+agent = Agent("openai:gpt-5.2", instructions=instructions_text)
+
+# To run the agent, set OPENAI_API_KEY and call:
+#   agent.run_sync("Summarize the latest incident report.")

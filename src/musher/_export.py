@@ -41,10 +41,15 @@ class OpenAIInlineSkill:
     description: str
     content_base64: str
 
-    def to_dict(self) -> dict[str, str]:
-        """Serialize to a dict suitable for OpenAI inline tool registration."""
+    def to_dict(self) -> dict[str, object]:
+        """Serialize to a dict matching OpenAI's inline skill format."""
         return {
+            "type": "inline",
             "name": self.name,
             "description": self.description,
-            "content_base64": self.content_base64,
+            "source": {
+                "type": "base64",
+                "media_type": "application/zip",
+                "data": self.content_base64,
+            },
         }
