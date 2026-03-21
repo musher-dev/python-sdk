@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -25,7 +26,8 @@ def _resolve_root(branded_var: str, category: str, platform_fn: Callable[..., Pa
 
     1. Branded env var (e.g. ``MUSHER_CACHE_HOME``)
     2. ``MUSHER_HOME/<category>`` umbrella
-    3. ``platformdirs`` (XDG on Linux, Library on macOS, LOCALAPPDATA on Windows)
+    3. Windows flat layout: ``%LOCALAPPDATA%\\musher\\<category>``
+    4. ``platformdirs`` (XDG on Linux, Library on macOS)
     """
     # 1. Branded env var
     branded = os.environ.get(branded_var)
@@ -41,7 +43,14 @@ def _resolve_root(branded_var: str, category: str, platform_fn: Callable[..., Pa
         if p.is_absolute():
             return p / category
 
-    # 3. platformdirs
+    # 3. Windows flat layout
+    if sys.platform == "win32":
+        local_app_data = os.environ.get("LOCALAPPDATA")
+        if local_app_data:
+            return Path(local_app_data) / APP_NAME / category
+        return Path.home() / "AppData" / "Local" / APP_NAME / category
+
+    # 4. platformdirs
     return platform_fn(APP_NAME)
 
 

@@ -1,5 +1,6 @@
 """Musher Python SDK — programmatic access to the Musher bundle registry."""
 
+from musher._auth import resolve_registry_url
 from musher._bundle import Asset, Bundle, Manifest, ManifestAsset, ResolveResult
 from musher._client import AsyncClient, Client
 from musher._config import MusherConfig, configure, get_config
@@ -36,14 +37,10 @@ from musher._types import (
 __all__ = [
     "OCI_MEDIA_TYPE_ASSET",
     "OCI_MEDIA_TYPE_CONFIG",
-    # Errors
     "APIError",
     "AgentSpecHandle",
-    # Models
     "Asset",
-    # Types
     "AssetType",
-    # Client
     "AsyncClient",
     "AuthenticationError",
     "Bundle",
@@ -60,7 +57,6 @@ __all__ = [
     "IntegrityError",
     "Manifest",
     "ManifestAsset",
-    # Config
     "MusherConfig",
     "MusherError",
     "OpenAIInlineSkill",
@@ -74,9 +70,9 @@ __all__ = [
     "VersionNotFoundError",
     "configure",
     "get_config",
-    # Convenience
     "pull",
     "pull_async",
+    "resolve_registry_url",
 ]
 
 

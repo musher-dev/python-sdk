@@ -16,12 +16,13 @@ pip install musher-sdk
 ```python
 import musher
 
-musher.configure(token="your-token")
+# Explicit token
+musher.configure(api_key="your-token")
 
 bundle = musher.pull("myorg/my-bundle:1.0.0")
 
-for asset in bundle.assets():
-    print(f"{asset.logical_path}: {asset.size_bytes} bytes")
+for asset in bundle.files():
+    print(f"{asset.logical_path}: {len(asset.text())} chars")
 ```
 
 ### Async
@@ -31,9 +32,80 @@ async with musher.AsyncClient() as client:
     bundle = await client.pull("myorg/my-bundle:1.0.0")
 ```
 
-## Status
+### Sync
 
-This package is in early development. Core SDK methods are stubbed with `NotImplementedError` and will be implemented in upcoming releases.
+```python
+with musher.Client() as client:
+    result = client.resolve("myorg/my-bundle:1.0.0")
+    asset = client.fetch_asset("asset-id", version="1.0.0")
+```
+
+## Configuration
+
+### Credential Chain
+
+The SDK resolves credentials automatically in this order:
+
+1. **Environment variables** — `MUSHER_API_KEY` or `MUSH_API_KEY`
+2. **OS keyring** — host-scoped service `musher/{hostname}`
+3. **Profile config** — `<config_dir>/config.toml` (see below)
+4. **File fallback** — `<config_dir>/api-key` (must be `0600` permissions)
+
+### Registry URL
+
+The registry URL is resolved from environment variables:
+
+- `MUSHER_API_URL`, `MUSH_API_URL`, `MUSHER_BASE_URL`, `MUSH_BASE_URL` (checked in order)
+- Default: `https://api.musher.dev`
+
+### Programmatic Configuration
+
+```python
+import musher
+
+# All parameters are optional — omitted values auto-discover
+musher.configure(
+    api_key="your-token",          # or token="your-token"
+    api_url="https://custom.dev",  # or registry_url="https://custom.dev"
+    cache_dir=Path("/tmp/cache"),
+)
+```
+
+### Profile Config File
+
+Create `<config_dir>/config.toml`:
+
+```toml
+[profile.default]
+api_key = "mush_..."
+
+[profile.staging]
+api_key = "mush_staging_..."
+```
+
+### Cache Behavior
+
+The SDK uses a content-addressable disk cache:
+
+- Blobs are stored by SHA-256 hash (shared across registries)
+- Manifests and refs are partitioned by registry hostname
+- Manifests have a configurable TTL (default 24h); refs default to 5min
+- `clean()` removes expired entries and garbage-collects unreferenced blobs
+
+## What's Implemented
+
+- `resolve()` — resolve bundle references to manifests
+- `fetch_asset()` — fetch individual assets by ID
+- `pull()` — resolve + fetch all assets + verify checksums
+- Sync (`Client`) and async (`AsyncClient`) clients
+- Content-addressable cache with TTL and garbage collection
+- Typed handles: skills, prompts, toolsets, agent specs
+
+## What's Stubbed
+
+- `export_claude_plugin()`, `install_vscode_skills()`, `install_claude_skills()`
+- `write_lockfile()`, `verify()`
+- OCI direct pull (`OCIClient`)
 
 ## License
 

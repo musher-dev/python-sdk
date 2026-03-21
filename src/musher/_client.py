@@ -98,9 +98,15 @@ class AsyncClient:
 
         # Cache the manifest with metadata
         if result.version:
-            self._cache.put_manifest(parsed.namespace, parsed.slug, result.version, response.json())
-            # Cache ref mapping for unversioned refs
-            if not parsed.version:
+            self._cache.put_manifest(
+                parsed.namespace,
+                parsed.slug,
+                result.version,
+                response.json(),
+                oci_digest=result.oci_digest,
+            )
+            # Cache ref mapping for unversioned refs (but not digest lookups)
+            if not parsed.version and not parsed.digest:
                 self._cache.put_ref(parsed.namespace, parsed.slug, "latest", result.version)
 
         return result

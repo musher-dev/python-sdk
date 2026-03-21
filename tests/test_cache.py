@@ -239,6 +239,93 @@ class TestClear:
         cache.clear()  # should not raise
 
 
+class TestBlobOverwrite:
+    def test_blob_overwrite_succeeds(self, tmp_path: Path):
+        """replace() semantics allow overwriting existing blobs."""
+        cache = BundleCache(cache_dir=tmp_path)
+        sha = "abcdef1234567890" * 4
+        cache.put_blob(sha, b"original")
+        cache.put_blob(sha, b"updated")
+        assert cache.get_blob(sha) == b"updated"
+
+
+class TestGarbageCollection:
+    def test_gc_removes_unreferenced_blobs(self, tmp_path: Path):
+        cache = BundleCache(cache_dir=tmp_path, registry_url="https://api.musher.dev")
+        # Put a blob that isn't referenced by any manifest
+        orphan_sha = "ab" * 32
+        cache.put_blob(orphan_sha, b"orphan data")
+        assert cache.get_blob(orphan_sha) is not None
+
+        removed = cache.gc()
+        assert removed == 1
+        assert cache.get_blob(orphan_sha) is None
+
+    def test_gc_keeps_referenced_blobs(self, tmp_path: Path):
+        cache = BundleCache(cache_dir=tmp_path, registry_url="https://api.musher.dev")
+        blob_sha = "cd" * 32
+        cache.put_blob(blob_sha, b"referenced data")
+
+        # Put a manifest that references the blob
+        manifest_data = {
+            "manifest": {
+                "layers": [
+                    {
+                        "contentSha256": blob_sha,
+                        "assetId": "a1",
+                        "logicalPath": "f.md",
+                        "assetType": "skill",
+                        "sizeBytes": 15,
+                    }
+                ]
+            }
+        }
+        cache.put_manifest("ns", "slug", "1.0.0", manifest_data)
+
+        removed = cache.gc()
+        assert removed == 0
+        assert cache.get_blob(blob_sha) is not None
+
+    def test_gc_mixed_referenced_and_unreferenced(self, tmp_path: Path):
+        cache = BundleCache(cache_dir=tmp_path, registry_url="https://api.musher.dev")
+        ref_sha = "cd" * 32
+        orphan_sha = "ef" * 32
+        cache.put_blob(ref_sha, b"referenced")
+        cache.put_blob(orphan_sha, b"orphan")
+
+        manifest_data = {
+            "manifest": {
+                "layers": [
+                    {
+                        "contentSha256": ref_sha,
+                        "assetId": "a1",
+                        "logicalPath": "f.md",
+                        "assetType": "skill",
+                        "sizeBytes": 10,
+                    }
+                ]
+            }
+        }
+        cache.put_manifest("ns", "slug", "1.0.0", manifest_data)
+
+        removed = cache.gc()
+        assert removed == 1
+        assert cache.get_blob(ref_sha) is not None
+        assert cache.get_blob(orphan_sha) is None
+
+    def test_gc_noop_on_empty_cache(self, tmp_path: Path):
+        cache = BundleCache(cache_dir=tmp_path)
+        assert cache.gc() == 0
+
+    def test_clean_calls_gc(self, tmp_path: Path):
+        cache = BundleCache(cache_dir=tmp_path, registry_url="https://api.musher.dev")
+        orphan_sha = "ab" * 32
+        cache.put_blob(orphan_sha, b"orphan")
+        removed = cache.clean()
+        assert removed >= 1
+        assert cache.get_blob(orphan_sha) is None
+
+
 class TestCacheDir:
     def test_custom_cache_dir(self, tmp_path: Path):
         cache = BundleCache(cache_dir=tmp_path)

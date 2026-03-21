@@ -48,7 +48,6 @@ class BundleCache:
           manifests/<host-id>/<ns>/<slug>/<version>.json
           manifests/<host-id>/<ns>/<slug>/<version>.meta.json
           refs/<host-id>/<ns>/<slug>/<ref>.json
-          temp/
     """
 
     def __init__(self, cache_dir: Path | None = None, *, registry_url: str | None = None) -> None:
@@ -178,7 +177,10 @@ class BundleCache:
     # ── Maintenance ────────────────────────────────────────────────
 
     def clean(self) -> int:
-        """Remove expired manifests (stale meta) and refs. Returns count of removed entries."""
+        """Remove expired manifests (stale meta) and refs, then GC unreferenced blobs.
+
+        Returns count of removed entries (manifests + refs + blobs).
+        """
         removed = 0
 
         # Clean expired manifests
@@ -213,7 +215,54 @@ class BundleCache:
                 except (json.JSONDecodeError, KeyError):
                     continue
 
+        # GC unreferenced blobs
+        removed += self.gc()
+
         return removed
+
+    def gc(self) -> int:
+        """Remove blobs not referenced by any cached manifest. Returns count of removed blobs."""
+        referenced = self._collect_referenced_blobs()
+
+        blobs_dir = self._cache_dir / "blobs" / "sha256"
+        if not blobs_dir.is_dir():
+            return 0
+
+        removed = 0
+        for prefix_dir in blobs_dir.iterdir():
+            if not prefix_dir.is_dir():
+                continue
+            for blob_file in prefix_dir.iterdir():
+                if blob_file.is_file() and blob_file.name not in referenced:
+                    blob_file.unlink()
+                    removed += 1
+            # Clean up empty prefix directory
+            if prefix_dir.is_dir() and not any(prefix_dir.iterdir()):
+                prefix_dir.rmdir()
+
+        return removed
+
+    def _collect_referenced_blobs(self) -> set[str]:
+        """Walk all cached manifests and collect referenced contentSha256 values."""
+        referenced: set[str] = set()
+        manifests_root = self._cache_dir / "manifests"
+        if not manifests_root.is_dir():
+            return referenced
+
+        for manifest_file in manifests_root.rglob("*.json"):
+            if manifest_file.name.endswith(".meta.json"):
+                continue
+            try:
+                manifest = json.loads(manifest_file.read_text())
+                manifest_obj = manifest.get("manifest", manifest)
+                for layer in manifest_obj.get("layers", []):
+                    sha = layer.get("contentSha256")
+                    if sha:
+                        referenced.add(sha)
+            except (json.JSONDecodeError, KeyError, TypeError):
+                continue
+
+        return referenced
 
     def purge(self, namespace: str, slug: str, version: str | None = None) -> None:
         """Remove specific cached entries for a bundle.
@@ -267,7 +316,7 @@ class BundleCache:
         try:
             with open(fd, "wb") as f:  # noqa: PTH123
                 f.write(data)
-            tmp.rename(path)
+            tmp.replace(path)
         except BaseException:
             tmp.unlink(missing_ok=True)
             raise
@@ -279,7 +328,7 @@ class BundleCache:
         try:
             with open(fd, "w") as f:  # noqa: PTH123
                 json.dump(data, f)
-            tmp.rename(path)
+            tmp.replace(path)
         except BaseException:
             tmp.unlink(missing_ok=True)
             raise

@@ -1,6 +1,7 @@
 """Tests for _client module — resolve, fetch_asset, pull, context managers."""
 
 import hashlib
+import json
 from pathlib import Path
 
 import httpx
@@ -167,6 +168,42 @@ class TestAsyncClient:
             result2 = await client.resolve("myorg/my-bundle:1.0.0")
             assert result2.version == "1.0.0"
         assert len(route.calls) == 1
+
+    @respx.mock
+    async def test_digest_ref_does_not_write_latest_alias(self, config: MusherConfig):
+        """Resolving by digest should NOT create a 'latest' ref cache entry."""
+        digest_response = {**_RESOLVE_RESPONSE, "ociDigest": "sha256:abc123"}
+        respx.get(f"{_BASE}/v1/namespaces/myorg/bundles/my-bundle:resolve").mock(
+            return_value=httpx.Response(200, json=digest_response)
+        )
+        async with AsyncClient(config=config) as client:
+            result = await client.resolve("myorg/my-bundle@sha256:abc123")
+            assert result.version == "1.0.0"
+            # Verify no "latest" ref was cached
+            ref = client._cache.get_ref("myorg", "my-bundle", "latest")
+            assert ref is None
+
+    @respx.mock
+    async def test_oci_digest_flows_to_meta(self, config: MusherConfig):
+        """oci_digest from resolve result should be stored in .meta.json."""
+        digest_response = {**_RESOLVE_RESPONSE, "ociDigest": "sha256:abc123"}
+        respx.get(f"{_BASE}/v1/namespaces/myorg/bundles/my-bundle:resolve").mock(
+            return_value=httpx.Response(200, json=digest_response)
+        )
+        async with AsyncClient(config=config) as client:
+            await client.resolve("myorg/my-bundle:1.0.0")
+            # Check the meta sidecar has the oci digest
+            meta_path = (
+                config.cache_dir
+                / "manifests"
+                / client._cache.host_id
+                / "myorg"
+                / "my-bundle"
+                / "1.0.0.meta.json"
+            )
+            assert meta_path.is_file()
+            meta = json.loads(meta_path.read_text())
+            assert meta["ociDigest"] == "sha256:abc123"
 
 
 class TestClient:

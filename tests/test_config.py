@@ -50,6 +50,33 @@ class TestConfigure:
         assert cfg.token == "my-token"
         assert cfg.registry_url == "https://custom.dev"
 
+    def test_configure_without_token_preserves_auth(self):
+        """configure(cache_dir=...) should NOT de-authenticate."""
+        with patch("musher._auth.resolve_token", return_value="auto-discovered"):
+            configure(cache_dir=Path("/tmp/test-cache"))
+        cfg = get_config()
+        assert cfg.token == "auto-discovered"
+
+    def test_api_key_alias(self):
+        configure(api_key="alias-token")
+        cfg = get_config()
+        assert cfg.token == "alias-token"
+
+    def test_token_takes_precedence_over_api_key(self):
+        configure(token="explicit-token", api_key="alias-token")
+        cfg = get_config()
+        assert cfg.token == "explicit-token"
+
+    def test_api_url_alias(self):
+        configure(api_url="https://alias.dev")
+        cfg = get_config()
+        assert cfg.registry_url == "https://alias.dev"
+
+    def test_registry_url_takes_precedence_over_api_url(self):
+        configure(registry_url="https://primary.dev", api_url="https://alias.dev")
+        cfg = get_config()
+        assert cfg.registry_url == "https://primary.dev"
+
 
 class TestGetConfig:
     def test_auto_discovers_env_vars(self):
