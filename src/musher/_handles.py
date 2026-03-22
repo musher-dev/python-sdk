@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
+import base64
+import io
 import json
+import tempfile
+import zipfile
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from pathlib import Path
 
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from musher._export import ClaudePluginExport, OpenAIInlineSkill, OpenAILocalSkill
+from musher._export import ClaudePluginExport, OpenAIInlineSkill, OpenAILocalSkill
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,19 +53,49 @@ class SkillHandle:
 
     def export_openai_local_skill(self, dest: Path | None = None) -> OpenAILocalSkill:
         """Export this skill for OpenAI local-path consumption."""
-        raise NotImplementedError
+        exported_path = self.export_path(dest)
+        return OpenAILocalSkill(
+            name=self.name,
+            description=self.description,
+            path=exported_path,
+        )
 
     def export_openai_inline_skill(self) -> OpenAIInlineSkill:
         """Export this skill as an inline base64 zip for OpenAI."""
-        raise NotImplementedError
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+            for relative_path, fh in self._files.items():
+                zf.writestr(f"{self.name}/{relative_path}", fh.bytes())
+        content_b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+        return OpenAIInlineSkill(
+            name=self.name,
+            description=self.description,
+            content_base64=content_b64,
+        )
 
     def export_path(self, dest: Path | None = None) -> Path:
         """Write skill files to a directory and return the path."""
-        raise NotImplementedError
+        if dest is None:
+            dest = Path(tempfile.mkdtemp(prefix="musher-"))
+
+        skill_dir = dest / self.name
+        for relative_path, fh in self._files.items():
+            out = skill_dir / relative_path
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_bytes(fh.bytes())
+        return skill_dir
 
     def export_zip(self, dest: Path | None = None) -> Path:
         """Write skill files to a zip archive and return the path."""
-        raise NotImplementedError
+        if dest is None:
+            dest = Path(tempfile.mkdtemp(prefix="musher-"))
+
+        dest.mkdir(parents=True, exist_ok=True)
+        zip_path = dest / f"{self.name}.zip"
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            for relative_path, fh in self._files.items():
+                zf.writestr(f"{self.name}/{relative_path}", fh.bytes())
+        return zip_path
 
 
 @dataclass(frozen=True, slots=True)
@@ -163,8 +194,39 @@ class BundleSelection:
 
     def export_claude_plugin(
         self,
-        plugin_name: str = "",
+        plugin_name: str,
         dest: Path | None = None,
     ) -> ClaudePluginExport:
         """Export selected resources as a Claude plugin."""
-        raise NotImplementedError
+        if not plugin_name:
+            msg = "plugin_name must be a non-empty string"
+            raise ValueError(msg)
+
+        if dest is None:
+            dest = Path(tempfile.mkdtemp(prefix="musher-plugin-"))
+
+        plugin_root = dest / plugin_name
+        plugin_meta_dir = plugin_root / ".claude-plugin"
+        plugin_meta_dir.mkdir(parents=True, exist_ok=True)
+
+        skills_manifest: list[dict[str, str]] = []
+        for skill in self._skills.values():
+            skill.export_path(dest=plugin_root / "skills")
+            skills_manifest.append(
+                {
+                    "name": skill.name,
+                    "description": skill.description,
+                    "path": f"skills/{skill.name}",
+                }
+            )
+
+        manifest = {
+            "name": plugin_name,
+            "version": "1.0.0",
+            "skills": skills_manifest,
+        }
+        (plugin_meta_dir / "plugin.json").write_text(
+            json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
+        )
+
+        return ClaudePluginExport(plugin_name=plugin_name, path=plugin_root)

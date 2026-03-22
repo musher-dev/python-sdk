@@ -1,5 +1,10 @@
 """Tests for _handles module — typed resource handles."""
 
+import base64
+import io
+import json
+import zipfile
+
 import pytest
 
 from musher._handles import (
@@ -68,16 +73,76 @@ class TestSkillHandle:
         skill = self._make_skill()
         assert skill.skill_md().text() == "# Search"
 
-    def test_export_stubs_raise(self):
+    def test_export_openai_local_skill(self, tmp_path):
         skill = self._make_skill()
-        with pytest.raises(NotImplementedError):
-            skill.export_openai_local_skill()
-        with pytest.raises(NotImplementedError):
-            skill.export_openai_inline_skill()
-        with pytest.raises(NotImplementedError):
-            skill.export_path()
-        with pytest.raises(NotImplementedError):
-            skill.export_zip()
+        result = skill.export_openai_local_skill(dest=tmp_path)
+        assert result.name == "search"
+        assert result.description == "Search skill"
+        assert result.path == tmp_path / "search"
+        assert (result.path / "SKILL.md").read_text() == "# Search"
+        assert (result.path / "handler.py").read_text() == "def run(): ..."
+        assert result.to_dict() == {
+            "name": "search",
+            "description": "Search skill",
+            "path": str(tmp_path / "search"),
+        }
+
+    def test_export_openai_local_skill_default_dest(self):
+        skill = self._make_skill()
+        result = skill.export_openai_local_skill()
+        assert result.path.name == "search"
+        assert (result.path / "SKILL.md").read_text() == "# Search"
+
+    def test_export_openai_inline_skill(self):
+        skill = self._make_skill()
+        result = skill.export_openai_inline_skill()
+        assert result.name == "search"
+        assert result.description == "Search skill"
+        # Verify the base64 content is a valid zip with expected entries
+        zip_bytes = base64.b64decode(result.content_base64)
+        with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
+            names = set(zf.namelist())
+            assert "search/SKILL.md" in names
+            assert "search/handler.py" in names
+            assert zf.read("search/SKILL.md") == b"# Search"
+        # Verify to_dict structure
+        d = result.to_dict()
+        assert d["type"] == "inline"
+        assert d["name"] == "search"
+        assert d["source"]["type"] == "base64"
+        assert d["source"]["media_type"] == "application/zip"
+        assert d["source"]["data"] == result.content_base64
+
+    def test_export_path(self, tmp_path):
+        skill = self._make_skill()
+        result = skill.export_path(dest=tmp_path)
+        assert result == tmp_path / "search"
+        assert (tmp_path / "search" / "SKILL.md").read_text() == "# Search"
+        assert (tmp_path / "search" / "handler.py").read_text() == "def run(): ..."
+
+    def test_export_path_default_dest(self):
+        skill = self._make_skill()
+        result = skill.export_path()
+        assert result.name == "search"
+        assert (result / "SKILL.md").read_text() == "# Search"
+        assert (result / "handler.py").read_text() == "def run(): ..."
+
+    def test_export_zip(self, tmp_path):
+        skill = self._make_skill()
+        result = skill.export_zip(dest=tmp_path)
+        assert result == tmp_path / "search.zip"
+        assert result.is_file()
+        with zipfile.ZipFile(result) as zf:
+            names = set(zf.namelist())
+            assert "search/SKILL.md" in names
+            assert "search/handler.py" in names
+            assert zf.read("search/SKILL.md") == b"# Search"
+
+    def test_export_zip_default_dest(self):
+        skill = self._make_skill()
+        result = skill.export_zip()
+        assert result.name == "search.zip"
+        assert result.is_file()
 
 
 class TestPromptHandle:
@@ -153,7 +218,27 @@ class TestBundleSelection:
         assert sel.toolsets() == []
         assert sel.agent_specs() == []
 
-    def test_export_stubs_raise(self):
+    def test_export_claude_plugin(self, tmp_path):
         sel = self._make_selection()
-        with pytest.raises(NotImplementedError):
-            sel.export_claude_plugin("test")
+        result = sel.export_claude_plugin("my-plugin", dest=tmp_path)
+        assert result.plugin_name == "my-plugin"
+        assert result.path == tmp_path / "my-plugin"
+
+        # Verify directory layout
+        assert (tmp_path / "my-plugin" / ".claude-plugin" / "plugin.json").is_file()
+        assert (tmp_path / "my-plugin" / "skills" / "search" / "SKILL.md").is_file()
+
+        # Verify plugin manifest
+        manifest = json.loads(
+            (tmp_path / "my-plugin" / ".claude-plugin" / "plugin.json").read_text()
+        )
+        assert manifest["name"] == "my-plugin"
+        assert manifest["version"] == "1.0.0"
+        assert len(manifest["skills"]) == 1
+        assert manifest["skills"][0]["name"] == "search"
+        assert manifest["skills"][0]["path"] == "skills/search"
+
+    def test_export_claude_plugin_empty_name_raises(self):
+        sel = self._make_selection()
+        with pytest.raises(ValueError, match="plugin_name must be a non-empty string"):
+            sel.export_claude_plugin("")

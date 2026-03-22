@@ -1,5 +1,6 @@
 """Tests for _bundle module — Pydantic model deserialization, Asset/Bundle construction."""
 
+import json
 from pathlib import Path
 
 import pytest
@@ -319,20 +320,67 @@ class TestBundle:
         assert len(sel.agent_specs()) == 0
         assert len(sel.files()) == 0
 
-    def test_export_claude_plugin_raises_not_implemented(self):
+    def test_export_claude_plugin(self, tmp_path):
         bundle = _make_bundle_with_typed_assets()
-        with pytest.raises(NotImplementedError):
-            bundle.export_claude_plugin("test-plugin")
+        result = bundle.export_claude_plugin("test-plugin", dest=tmp_path)
+        assert result.plugin_name == "test-plugin"
+        assert result.path == tmp_path / "test-plugin"
+        assert (tmp_path / "test-plugin" / ".claude-plugin" / "plugin.json").is_file()
+        assert (tmp_path / "test-plugin" / "skills" / "search" / "SKILL.md").is_file()
+        assert (tmp_path / "test-plugin" / "skills" / "calc" / "SKILL.md").is_file()
+
+    def test_export_claude_plugin_subset(self, tmp_path):
+        bundle = _make_bundle_with_typed_assets()
+        result = bundle.export_claude_plugin("test-plugin", skills=["search"], dest=tmp_path)
+        manifest = json.loads((result.path / ".claude-plugin" / "plugin.json").read_text())
+        assert len(manifest["skills"]) == 1
+        assert manifest["skills"][0]["name"] == "search"
+        assert not (tmp_path / "test-plugin" / "skills" / "calc").exists()
+
+    def test_install_claude_skills(self, tmp_path):
+        bundle = _make_bundle_with_typed_assets()
+        bundle.install_claude_skills(tmp_path)
+        assert (tmp_path / "search" / "SKILL.md").is_file()
+        assert (tmp_path / "search" / "handler.py").is_file()
+        assert (tmp_path / "calc" / "SKILL.md").is_file()
+        # Verify marker files
+        marker = json.loads((tmp_path / "search" / ".musher-managed").read_text())
+        assert marker["bundle_ref"] == "org/bundle"
+        assert marker["bundle_version"] == "1.0.0"
+
+    def test_install_claude_skills_subset(self, tmp_path):
+        bundle = _make_bundle_with_typed_assets()
+        bundle.install_claude_skills(tmp_path, skills=["search"])
+        assert (tmp_path / "search" / "SKILL.md").is_file()
+        assert not (tmp_path / "calc").exists()
+
+    def test_install_claude_skills_clean(self, tmp_path):
+        bundle = _make_bundle_with_typed_assets()
+        # First install
+        bundle.install_claude_skills(tmp_path)
+        assert (tmp_path / "search").is_dir()
+        assert (tmp_path / "calc").is_dir()
+        # Reinstall with only one skill and clean
+        bundle.install_claude_skills(tmp_path, skills=["search"], clean=True)
+        assert (tmp_path / "search").is_dir()
+        assert not (tmp_path / "calc").exists()
+
+    def test_install_claude_skills_clean_preserves_user_dirs(self, tmp_path):
+        bundle = _make_bundle_with_typed_assets()
+        bundle.install_claude_skills(tmp_path)
+        # Create a user-managed skill directory (no marker)
+        user_skill = tmp_path / "my-custom-skill"
+        user_skill.mkdir()
+        (user_skill / "SKILL.md").write_text("# Custom")
+        # Clean should leave user dir alone
+        bundle.install_claude_skills(tmp_path, skills=["search"], clean=True)
+        assert user_skill.is_dir()
+        assert (user_skill / "SKILL.md").read_text() == "# Custom"
 
     def test_install_vscode_skills_raises_not_implemented(self):
         bundle = _make_bundle_with_typed_assets()
         with pytest.raises(NotImplementedError):
             bundle.install_vscode_skills(Path("/tmp/skills"))
-
-    def test_install_claude_skills_raises_not_implemented(self):
-        bundle = _make_bundle_with_typed_assets()
-        with pytest.raises(NotImplementedError):
-            bundle.install_claude_skills(Path("/tmp/skills"))
 
     def test_write_lockfile_raises_not_implemented(self):
         bundle = _make_bundle_with_typed_assets()

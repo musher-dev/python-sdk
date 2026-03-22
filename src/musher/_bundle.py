@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
+import json as _json
+import shutil
 from dataclasses import dataclass, field
-from pathlib import PurePosixPath
+from datetime import UTC, datetime
+from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
+
+if TYPE_CHECKING:
+    from musher._export import ClaudePluginExport
 
 from musher._handles import (
     AgentSpecHandle,
@@ -18,11 +24,6 @@ from musher._handles import (
     ToolsetHandle,
 )
 from musher._types import AssetType, BundleSourceType, BundleVersionState
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from musher._export import ClaudePluginExport
 
 
 class _SDKSchema(BaseModel):
@@ -295,8 +296,8 @@ class Bundle:
         skills: list[str] | None = None,
         dest: Path | None = None,
     ) -> ClaudePluginExport:
-        """Export bundle as a Claude plugin. Raises NotImplementedError (stub)."""
-        raise NotImplementedError
+        """Export bundle as a Claude plugin."""
+        return self.select(skills=skills).export_claude_plugin(plugin_name, dest=dest)
 
     def install_vscode_skills(
         self,
@@ -315,8 +316,32 @@ class Bundle:
         *,
         clean: bool = False,
     ) -> None:
-        """Install skills to a Claude skills directory. Raises NotImplementedError (stub)."""
-        raise NotImplementedError
+        """Install skills to a Claude skills directory."""
+        selection = self.select(skills=skills)
+
+        if clean and dest.is_dir():
+            for child in dest.iterdir():
+                marker = child / ".musher-managed"
+                if child.is_dir() and marker.is_file():
+                    try:
+                        info = _json.loads(marker.read_text(encoding="utf-8"))
+                    except (OSError, _json.JSONDecodeError):
+                        continue
+                    if info.get("bundle_ref") == self.ref:
+                        shutil.rmtree(child)
+
+        dest.mkdir(parents=True, exist_ok=True)
+
+        for skill in selection.skills():
+            skill.export_path(dest=dest)
+            marker_data = {
+                "bundle_ref": self.ref,
+                "bundle_version": self.version,
+                "installed_at": datetime.now(UTC).isoformat(),
+            }
+            (dest / skill.name / ".musher-managed").write_text(
+                _json.dumps(marker_data, indent=2) + "\n", encoding="utf-8"
+            )
 
     def write_lockfile(self, dest: Path | None = None) -> Path:
         """Write a lockfile for the current bundle. Raises NotImplementedError (stub)."""

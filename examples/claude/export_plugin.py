@@ -8,21 +8,39 @@ from pathlib import Path
 
 import musher
 
-# NOTE: Bundle references below (e.g. "acme/agent-toolkit:2.0.0") are
+# NOTE: Bundle references below (e.g. "acme/engineering-workflows:2.0.0") are
 # placeholders. Replace with a real bundle ref from your Musher registry.
 
 # Credentials auto-discovered from MUSHER_API_KEY env var, keyring,
 # or credential file. To override: musher.configure(token="your-token")
 
-bundle = musher.pull("acme/agent-toolkit:2.0.0")
+bundle = musher.pull("acme/engineering-workflows:2.0.0")
 
 # Select only the skills needed for this session
-selection = bundle.select(skills=["csv-insights", "incident-summary"])
+selection = bundle.select(skills=["researching-repos", "drafting-release-notes"])
 
-# PREVIEW: export_claude_plugin() is not yet implemented — will raise NotImplementedError.
-plugin = selection.export_claude_plugin("safe-tools", dest=Path("./plugins"))
+# Export as a local Claude plugin with a namespaced plugin name.
+# Skills will be accessible as "team-workflows:researching-repos", etc.
+plugin = selection.export_claude_plugin("team-workflows", dest=Path("./plugins"))
 print(f"Plugin exported to: {plugin.path}")
 
 # Verify only the selected skills are present
 for skill in selection.skills():
     print(f"  Skill: {skill.name} — {skill.description}")
+
+# To load this plugin with the Claude Agent SDK:
+#
+#   from claude_agent_sdk import ClaudeAgentOptions, query
+#
+#   options = ClaudeAgentOptions(
+#       cwd=str(Path(__file__).resolve().parents[1]),
+#       plugins=[{"type": "local", "path": str(plugin.path)}],
+#       allowed_tools=["Skill", "Read", "Grep", "Glob", "Bash"],
+#       max_turns=3,
+#   )
+#
+#   async for message in query(
+#       prompt="What custom commands do you have available?",
+#       options=options,
+#   ):
+#       ...

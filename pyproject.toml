@@ -12,6 +12,11 @@ dependencies = [
     "pydantic>=2.12",
 ]
 
+[project.optional-dependencies]
+examples = [
+    "openai-agents>=0.1",
+]
+
 [dependency-groups]
 dev = [
     "ruff>=0.15.2",

@@ -1,23 +1,90 @@
-"""Example: Export a skill as a local directory for OpenAI Agents.
+"""Load a Musher skill as a local OpenAI shell skill and use it on this repo.
 
-Exports a single skill to disk so it can be loaded as a local shell skill
-by the OpenAI Agents SDK.
+Requires: pip install openai-agents
 """
+
+import asyncio
+from pathlib import Path
+
+from agents import (
+    Agent,
+    Runner,
+    ShellCallOutcome,
+    ShellCommandOutput,
+    ShellCommandRequest,
+    ShellResult,
+    ShellTool,
+)
 
 import musher
 
-# NOTE: Bundle references below (e.g. "acme/agent-toolkit:2.0.0") are
+# NOTE: Bundle references below (e.g. "acme/engineering-workflows:2.0.0") are
 # placeholders. Replace with a real bundle ref from your Musher registry.
 
 # Credentials auto-discovered from MUSHER_API_KEY env var, keyring,
 # or credential file. To override: musher.configure(token="your-token")
 
-bundle = musher.pull("acme/agent-toolkit:2.0.0")
+PROJECT_DIR = Path(__file__).resolve().parents[2]
 
-# Get a single skill
-skill = bundle.skill("csv-insights")
 
-# PREVIEW: export_openai_local_skill() is not yet implemented — will raise NotImplementedError.
-local = skill.export_openai_local_skill()
-print(f"Local skill: {local.name} at {local.path}")
-print(f"  Registration dict: {local.to_dict()}")
+class RepoShell:
+    """Minimal local shell executor for the OpenAI Agents SDK."""
+
+    def __init__(self, cwd: Path) -> None:
+        self.cwd = cwd
+
+    async def __call__(self, request: ShellCommandRequest) -> ShellResult:
+        outputs: list[ShellCommandOutput] = []
+
+        for command in request.data.action.commands:
+            proc = await asyncio.create_subprocess_shell(
+                command,
+                cwd=self.cwd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await proc.communicate()
+
+            outputs.append(
+                ShellCommandOutput(
+                    command=command,
+                    stdout=stdout.decode("utf-8", errors="ignore"),
+                    stderr=stderr.decode("utf-8", errors="ignore"),
+                    outcome=ShellCallOutcome(type="exit", exit_code=proc.returncode),
+                )
+            )
+
+        return ShellResult(
+            output=outputs,
+            max_output_length=request.data.action.max_output_length,
+            provider_data={"working_directory": str(self.cwd)},
+        )
+
+
+bundle = musher.pull("acme/engineering-workflows:2.0.0")
+skill = bundle.skill("repo-maintainer")
+local = skill.export_openai_local_skill(dest=PROJECT_DIR / ".musher" / "openai" / "skills")
+
+agent = Agent(
+    name="Repo Triage Assistant",
+    model="gpt-4.1",
+    instructions="Use the local skill when it helps. Keep the answer concise and actionable.",
+    tools=[
+        ShellTool(
+            executor=RepoShell(PROJECT_DIR),
+            environment={"type": "local", "skills": [local.to_dict()]},
+        )
+    ],
+)
+
+
+async def main() -> None:
+    result = await Runner.run(
+        agent,
+        "Use the repo-maintainer skill to inspect this repository and tell me the first onboarding issue I should fix.",
+    )
+    print(result.final_output)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

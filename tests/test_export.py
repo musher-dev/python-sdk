@@ -7,7 +7,8 @@ from musher._export import ClaudePluginExport, OpenAIInlineSkill, OpenAILocalSki
 
 class TestClaudePluginExport:
     def test_construction(self):
-        export = ClaudePluginExport(path=Path("/tmp/my-plugin"))
+        export = ClaudePluginExport(plugin_name="my-plugin", path=Path("/tmp/my-plugin"))
+        assert export.plugin_name == "my-plugin"
         assert export.path == Path("/tmp/my-plugin")
 
 

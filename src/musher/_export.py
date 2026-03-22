@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 class ClaudePluginExport:
     """Result of exporting a bundle selection as a Claude plugin."""
 
+    plugin_name: str
     path: Path
 
 
