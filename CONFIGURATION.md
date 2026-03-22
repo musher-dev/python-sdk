@@ -95,11 +95,11 @@ $cache_root/
 import musher
 
 musher.configure(
-    token="...",                   # explicit token
-    api_key="...",                 # alias for token
-    registry_url="https://...",    # explicit registry URL
-    api_url="https://...",         # alias for registry_url
-    cache_dir=Path("..."),         # override cache directory
+    token="...",  # explicit token
+    api_key="...",  # alias for token
+    registry_url="https://...",  # explicit registry URL
+    api_url="https://...",  # alias for registry_url
+    cache_dir=Path("..."),  # override cache directory
 )
 ```
 

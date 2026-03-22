@@ -7,7 +7,7 @@ import shutil
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar, cast
 
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
@@ -29,7 +29,7 @@ from musher._types import AssetType, BundleSourceType, BundleVersionState
 class _SDKSchema(BaseModel):
     """Base schema with camelCase aliasing, matching the platform API wire format."""
 
-    model_config = ConfigDict(
+    model_config: ClassVar[ConfigDict] = ConfigDict(
         alias_generator=to_camel,
         validate_by_alias=True,
         validate_by_name=True,
@@ -106,7 +106,7 @@ def _build_skill_handles(
             continue
         path = PurePosixPath(asset.logical_path)
         if path.name == "SKILL.md":
-            root = str(path.parent) if path.parent != PurePosixPath(".") else ""
+            root = str(path.parent) if path.parent != PurePosixPath() else ""
             skill_roots.setdefault(root, {})[path.name] = file_handles[asset.logical_path]
         else:
             _place_skill_file(asset, path, assets, file_handles, skill_roots)
@@ -301,10 +301,10 @@ class Bundle:
 
     def install_vscode_skills(
         self,
-        dest: Path,
-        skills: list[str] | None = None,
+        _dest: Path,
+        _skills: list[str] | None = None,
         *,
-        clean: bool = False,
+        _clean: bool = False,
     ) -> None:
         """Install skills to a VS Code skills directory. Raises NotImplementedError (stub)."""
         raise NotImplementedError
@@ -324,7 +324,9 @@ class Bundle:
                 marker = child / ".musher-managed"
                 if child.is_dir() and marker.is_file():
                     try:
-                        info = _json.loads(marker.read_text(encoding="utf-8"))
+                        info = cast(
+                            "dict[str, object]", _json.loads(marker.read_text(encoding="utf-8"))
+                        )
                     except (OSError, _json.JSONDecodeError):
                         continue
                     if info.get("bundle_ref") == self.ref:
@@ -333,17 +335,17 @@ class Bundle:
         dest.mkdir(parents=True, exist_ok=True)
 
         for skill in selection.skills():
-            skill.export_path(dest=dest)
+            _ = skill.export_path(dest=dest)
             marker_data = {
                 "bundle_ref": self.ref,
                 "bundle_version": self.version,
                 "installed_at": datetime.now(UTC).isoformat(),
             }
-            (dest / skill.name / ".musher-managed").write_text(
+            _ = (dest / skill.name / ".musher-managed").write_text(
                 _json.dumps(marker_data, indent=2) + "\n", encoding="utf-8"
             )
 
-    def write_lockfile(self, dest: Path | None = None) -> Path:
+    def write_lockfile(self, _dest: Path | None = None) -> Path:
         """Write a lockfile for the current bundle. Raises NotImplementedError (stub)."""
         raise NotImplementedError
 

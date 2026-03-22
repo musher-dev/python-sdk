@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import override
 
 
 class AssetType(StrEnum):
@@ -69,6 +70,7 @@ class BundleRef:
         namespace, slug = _split_base(ref)
         return cls(namespace=namespace, slug=slug)
 
+    @override
     def __str__(self) -> str:
         base = f"{self.namespace}/{self.slug}"
         if self.digest:

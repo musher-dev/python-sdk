@@ -8,7 +8,7 @@ import tempfile
 import time
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import cast
 from urllib.parse import urlparse
 
 from musher._config import get_config
@@ -50,6 +50,10 @@ class BundleCache:
           refs/<host-id>/<ns>/<slug>/<ref>.json
     """
 
+    _cache_dir: Path
+    _host_id: str
+    _tag_written: bool
+
     def __init__(self, cache_dir: Path | None = None, *, registry_url: str | None = None) -> None:
         self._cache_dir = cache_dir or get_config().cache_dir
         registry_url = registry_url or get_config().registry_url
@@ -73,7 +77,7 @@ class BundleCache:
         tag_path = self._cache_dir / "CACHEDIR.TAG"
         if not tag_path.is_file():
             tag_path.parent.mkdir(parents=True, exist_ok=True)
-            tag_path.write_text(_CACHEDIR_TAG_HEADER)
+            _ = tag_path.write_text(_CACHEDIR_TAG_HEADER)
         self._tag_written = True
 
     # ── Blob operations ────────────────────────────────────────────
@@ -93,11 +97,11 @@ class BundleCache:
 
     # ── Manifest operations ────────────────────────────────────────
 
-    def get_manifest(self, namespace: str, slug: str, version: str) -> dict[str, Any] | None:
+    def get_manifest(self, namespace: str, slug: str, version: str) -> dict[str, object] | None:
         """Retrieve a cached manifest. Returns ``None`` on miss."""
         path = self._manifest_path(namespace, slug, version)
         if path.is_file():
-            return json.loads(path.read_text())
+            return cast("dict[str, object]", json.loads(path.read_text()))
         return None
 
     def put_manifest(
@@ -105,7 +109,7 @@ class BundleCache:
         namespace: str,
         slug: str,
         version: str,
-        data: dict[str, Any],
+        data: dict[str, object],
         *,
         oci_digest: str | None = None,
         ttl: int = _DEFAULT_MANIFEST_TTL,
@@ -117,7 +121,7 @@ class BundleCache:
 
         # Write .meta.json sidecar
         meta_path = self._meta_path(namespace, slug, version)
-        meta = {
+        meta: dict[str, object] = {
             "fetchedAt": datetime.now(UTC).isoformat(),
             "ttlSeconds": ttl,
             "ociDigest": oci_digest,
@@ -130,11 +134,11 @@ class BundleCache:
         if not meta_path.is_file():
             return False
         try:
-            meta = json.loads(meta_path.read_text())
-            fetched_at = datetime.fromisoformat(meta["fetchedAt"])
-            ttl = meta.get("ttlSeconds", _DEFAULT_MANIFEST_TTL)
+            raw = cast("dict[str, object]", json.loads(meta_path.read_text()))
+            fetched_at = datetime.fromisoformat(cast("str", raw["fetchedAt"]))
+            ttl = cast("int", raw.get("ttlSeconds", _DEFAULT_MANIFEST_TTL))
             age = (datetime.now(UTC) - fetched_at).total_seconds()
-            return age < ttl
+            return bool(age < ttl)
         except (KeyError, ValueError, json.JSONDecodeError):
             return False
 
@@ -146,12 +150,12 @@ class BundleCache:
         if not path.is_file():
             return None
         try:
-            data = json.loads(path.read_text())
-            expires_at = data.get("expiresAt", 0)
+            data = cast("dict[str, object]", json.loads(path.read_text()))
+            expires_at = cast("float", data.get("expiresAt", 0))
             if time.time() > expires_at:
                 path.unlink(missing_ok=True)
                 return None
-            return data.get("version")
+            return cast("str | None", data.get("version"))
         except (json.JSONDecodeError, KeyError):
             return None
 
@@ -167,7 +171,7 @@ class BundleCache:
         """Cache a ref → version alias mapping with TTL."""
         self._ensure_cachedir_tag()
         path = self._ref_path(namespace, slug, ref)
-        data = {
+        data: dict[str, object] = {
             "version": version,
             "cachedAt": datetime.now(UTC).isoformat(),
             "expiresAt": time.time() + ttl,
@@ -188,9 +192,9 @@ class BundleCache:
         if manifests_dir.is_dir():
             for meta_file in manifests_dir.rglob("*.meta.json"):
                 try:
-                    meta = json.loads(meta_file.read_text())
-                    fetched_at = datetime.fromisoformat(meta["fetchedAt"])
-                    ttl = meta.get("ttlSeconds", _DEFAULT_MANIFEST_TTL)
+                    raw = cast("dict[str, object]", json.loads(meta_file.read_text()))
+                    fetched_at = datetime.fromisoformat(cast("str", raw["fetchedAt"]))
+                    ttl = cast("int", raw.get("ttlSeconds", _DEFAULT_MANIFEST_TTL))
                     age = (datetime.now(UTC) - fetched_at).total_seconds()
                     if age >= ttl:
                         # Remove both manifest and meta
@@ -208,8 +212,8 @@ class BundleCache:
         if refs_dir.is_dir():
             for ref_file in refs_dir.rglob("*.json"):
                 try:
-                    data = json.loads(ref_file.read_text())
-                    if time.time() > data.get("expiresAt", 0):
+                    ref_data = cast("dict[str, object]", json.loads(ref_file.read_text()))
+                    if time.time() > cast("float", ref_data.get("expiresAt", 0)):
                         ref_file.unlink(missing_ok=True)
                         removed += 1
                 except (json.JSONDecodeError, KeyError):
@@ -253,10 +257,11 @@ class BundleCache:
             if manifest_file.name.endswith(".meta.json"):
                 continue
             try:
-                manifest = json.loads(manifest_file.read_text())
-                manifest_obj = manifest.get("manifest", manifest)
-                for layer in manifest_obj.get("layers", []):
-                    sha = layer.get("contentSha256")
+                manifest = cast("dict[str, object]", json.loads(manifest_file.read_text()))
+                manifest_obj = cast("dict[str, object]", manifest.get("manifest", manifest))
+                layers = cast("list[dict[str, object]]", manifest_obj.get("layers", []))
+                for layer in layers:
+                    sha = cast("str | None", layer.get("contentSha256"))
                     if sha:
                         referenced.add(sha)
             except (json.JSONDecodeError, KeyError, TypeError):
@@ -309,26 +314,28 @@ class BundleCache:
     def _ref_path(self, namespace: str, slug: str, ref: str) -> Path:
         return self._cache_dir / "refs" / self._host_id / namespace / slug / f"{ref}.json"
 
-    def _atomic_write_bytes(self, path: Path, data: bytes) -> None:
+    @staticmethod
+    def _atomic_write_bytes(path: Path, data: bytes) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         fd, tmp_name = tempfile.mkstemp(dir=path.parent)
         tmp = Path(tmp_name)
         try:
-            with open(fd, "wb") as f:  # noqa: PTH123
-                f.write(data)
-            tmp.replace(path)
+            with open(fd, "wb") as f:  # noqa: PTH123, FURB103
+                _ = f.write(data)
+            _ = tmp.replace(path)
         except BaseException:
             tmp.unlink(missing_ok=True)
             raise
 
-    def _atomic_write_json(self, path: Path, data: dict[str, Any]) -> None:
+    @staticmethod
+    def _atomic_write_json(path: Path, data: dict[str, object]) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         fd, tmp_name = tempfile.mkstemp(dir=path.parent, suffix=".json")
         tmp = Path(tmp_name)
         try:
-            with open(fd, "w") as f:  # noqa: PTH123
+            with open(fd, "w", encoding="utf-8") as f:  # noqa: PTH123
                 json.dump(data, f)
-            tmp.replace(path)
+            _ = tmp.replace(path)
         except BaseException:
             tmp.unlink(missing_ok=True)
             raise

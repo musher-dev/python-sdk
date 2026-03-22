@@ -38,6 +38,13 @@ packages = ["src/musher"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--cov=musher",
+    "--cov-report=term-missing",
+    "--cov-fail-under=80",
+]
 
 [tool.basedpyright]
 include = ["src"]
@@ -47,12 +54,13 @@ exclude = [
     "tests",
 ]
 pythonVersion = "3.13"
-typeCheckingMode = "standard"
+typeCheckingMode = "all"
 
 [tool.ruff]
 required-version = ">=0.14.14"
 line-length = 100
 target-version = "py313"
+preview = true
 exclude = [
     ".git",
     ".venv",
@@ -61,46 +69,78 @@ exclude = [
 
 [tool.ruff.lint]
 select = [
-    "E", "W",
-    "F",
-    "I",
-    "N",
-    "UP",
-    "B",
-    "C4",
-    "A",
-    "DTZ",
-    "ASYNC",
-    "RUF",
-    "T20",
-    "PGH",
-    "PT",
-    "PERF",
-    "RET",
-    "G",
-    "BLE",
-    "SIM",
-    "TCH",
-    "ARG",
-    "PTH",
-    "PL",
-    "ERA001",
-    "S",
-    "FIX",
+    "E", "W",       # pycodestyle
+    "F",             # pyflakes
+    "I",             # isort
+    "N",             # pep8-naming
+    "UP",            # pyupgrade
+    "B",             # flake8-bugbear
+    "C4",            # flake8-comprehensions
+    "A",             # flake8-builtins
+    "DTZ",           # flake8-datetimez
+    "ASYNC",         # flake8-async
+    "RUF",           # ruff-specific
+    "T20",           # flake8-print
+    "PGH",           # pygrep-hooks
+    "PT",            # flake8-pytest-style
+    "PERF",          # perflint
+    "RET",           # flake8-return
+    "G",             # flake8-logging-format
+    "BLE",           # flake8-blind-except
+    "SIM",           # flake8-simplify
+    "TC",            # flake8-type-checking
+    "ARG",           # flake8-unused-arguments
+    "PTH",           # flake8-use-pathlib
+    "PL",            # pylint
+    "ERA001",        # eradicate (dead code)
+    "S",             # flake8-bandit (security)
+    "FIX",           # fixme comments
+    "ANN",           # flake8-annotations
+    "D",             # pydocstyle
+    "ISC",           # flake8-implicit-str-concat
+    "ICN",           # flake8-import-conventions
+    "PIE",           # flake8-pie
+    "RSE",           # flake8-raise
+    "FURB",          # refurb
+    "LOG",           # flake8-logging
+    "FLY",           # flynt (f-string conversion)
+    "TID",           # flake8-tidy-imports
+    "COM",           # flake8-commas
+    "Q",             # flake8-quotes
+    "SLOT",          # flake8-slots
+    "FA",            # flake8-future-annotations
+    "YTT",           # flake8-2020 (sys.version checks)
 ]
 ignore = [
-    "E501",
-    "A003",
+    "E501",          # line too long (handled by formatter)
+    "A003",          # builtin shadowing in class attributes
+"D100",          # missing docstring in public module
+    "D104",          # missing docstring in public package
+    "COM812",        # missing trailing comma (conflicts with formatter)
+    "ISC001",        # implicit string concat on single line (conflicts with formatter)
 ]
 fixable = ["ALL"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*" = ["S101", "S105", "S106", "S108", "ARG001", "ARG002", "PLR2004"]
-"__init__.py" = ["F401"]
-"examples/**/*" = ["T201", "S106", "ERA001"]
+"tests/**/*" = [
+    "S101", "S105", "S106", "S108",
+    "ARG001", "ARG002",
+    "PLR2004",
+    "PLR6301",       # test methods don't use self
+    "PLR0904",       # too many public methods in test classes
+    "PLC2701",       # tests import private modules
+    "RUF069",        # float equality ok in tests with known values
+    "ANN",
+    "D",
+]
+"__init__.py" = ["F401", "RUF067"]
+"examples/**/*" = ["T201", "S106", "ERA001", "ANN", "D"]
 
 [tool.ruff.lint.pylint]
 max-args = 8
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
 
 [tool.ruff.lint.isort]
 known-first-party = ["musher"]

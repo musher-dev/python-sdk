@@ -25,4 +25,5 @@ instructions_text = bundle.prompt("system").text()
 agent = Agent("openai:gpt-5.2", instructions=instructions_text)
 
 # To run the agent, set OPENAI_API_KEY and call:
-#   agent.run_sync("Summarize the latest incident report.")
+#   result = agent.run_sync("Summarize the latest incident report.")
+#   print(result.output)

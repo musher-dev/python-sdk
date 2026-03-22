@@ -11,13 +11,13 @@ class OCIClient:
     """
 
     def __init__(self, registry_url: str, token: str | None = None) -> None:
-        self._registry_url = registry_url
-        self._token = token
+        self._registry_url: str = registry_url
+        self._token: str | None = token
 
-    async def pull_manifest(self, repository: str, reference: str) -> dict:
+    async def pull_manifest(self, _repository: str, _reference: str) -> dict[str, object]:
         """Pull an OCI manifest for the given repository and reference."""
         raise NotImplementedError
 
-    async def pull_blob(self, repository: str, digest: str) -> bytes:
+    async def pull_blob(self, _repository: str, _digest: str) -> bytes:
         """Pull a blob by digest from the given repository."""
         raise NotImplementedError

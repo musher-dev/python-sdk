@@ -10,17 +10,15 @@ from musher._types import AssetType, BundleVersionState
 
 
 def _make_resolve() -> ResolveResult:
-    return ResolveResult.model_validate(
-        {
-            "bundleId": "b1",
-            "versionId": "v1",
-            "namespace": "org",
-            "slug": "bundle",
-            "ref": "org/bundle",
-            "version": "1.0.0",
-            "state": "published",
-        }
-    )
+    return ResolveResult.model_validate({
+        "bundleId": "b1",
+        "versionId": "v1",
+        "namespace": "org",
+        "slug": "bundle",
+        "ref": "org/bundle",
+        "version": "1.0.0",
+        "state": "published",
+    })
 
 
 def _make_bundle_with_typed_assets() -> Bundle:
@@ -100,16 +98,14 @@ def _make_bundle_with_typed_assets() -> Bundle:
 
 class TestManifestAsset:
     def test_from_camel_case(self):
-        asset = ManifestAsset.model_validate(
-            {
-                "assetId": "abc-123",
-                "logicalPath": "prompts/main.txt",
-                "assetType": "prompt",
-                "contentSha256": "deadbeef",
-                "sizeBytes": 1024,
-                "mediaType": "text/plain",
-            }
-        )
+        asset = ManifestAsset.model_validate({
+            "assetId": "abc-123",
+            "logicalPath": "prompts/main.txt",
+            "assetType": "prompt",
+            "contentSha256": "deadbeef",
+            "sizeBytes": 1024,
+            "mediaType": "text/plain",
+        })
         assert asset.asset_id == "abc-123"
         assert asset.logical_path == "prompts/main.txt"
         assert asset.asset_type == "prompt"
@@ -118,62 +114,56 @@ class TestManifestAsset:
         assert asset.media_type == "text/plain"
 
     def test_from_snake_case(self):
-        asset = ManifestAsset.model_validate(
-            {
-                "asset_id": "abc",
-                "logical_path": "config.yaml",
-                "asset_type": "config",
-                "content_sha256": "aabb",
-                "size_bytes": 100,
-            }
-        )
+        asset = ManifestAsset.model_validate({
+            "asset_id": "abc",
+            "logical_path": "config.yaml",
+            "asset_type": "config",
+            "content_sha256": "aabb",
+            "size_bytes": 100,
+        })
         assert asset.asset_id == "abc"
         assert asset.media_type is None
 
 
 class TestManifest:
     def test_layers(self):
-        manifest = Manifest.model_validate(
-            {
-                "layers": [
-                    {
-                        "assetId": "a1",
-                        "logicalPath": "p.txt",
-                        "assetType": "prompt",
-                        "contentSha256": "xx",
-                        "sizeBytes": 10,
-                    }
-                ]
-            }
-        )
+        manifest = Manifest.model_validate({
+            "layers": [
+                {
+                    "assetId": "a1",
+                    "logicalPath": "p.txt",
+                    "assetType": "prompt",
+                    "contentSha256": "xx",
+                    "sizeBytes": 10,
+                }
+            ]
+        })
         assert len(manifest.layers) == 1
         assert manifest.layers[0].asset_id == "a1"
 
 
 class TestResolveResult:
     def test_from_api_response(self):
-        result = ResolveResult.model_validate(
-            {
-                "bundleId": "uuid-1",
-                "versionId": "uuid-2",
-                "namespace": "myorg",
-                "slug": "my-bundle",
-                "ref": "myorg/my-bundle",
-                "version": "1.0.0",
-                "state": "published",
-                "manifest": {
-                    "layers": [
-                        {
-                            "assetId": "a1",
-                            "logicalPath": "main.txt",
-                            "assetType": "prompt",
-                            "contentSha256": "abc",
-                            "sizeBytes": 100,
-                        }
-                    ]
-                },
-            }
-        )
+        result = ResolveResult.model_validate({
+            "bundleId": "uuid-1",
+            "versionId": "uuid-2",
+            "namespace": "myorg",
+            "slug": "my-bundle",
+            "ref": "myorg/my-bundle",
+            "version": "1.0.0",
+            "state": "published",
+            "manifest": {
+                "layers": [
+                    {
+                        "assetId": "a1",
+                        "logicalPath": "main.txt",
+                        "assetType": "prompt",
+                        "contentSha256": "abc",
+                        "sizeBytes": 100,
+                    }
+                ]
+            },
+        })
         assert result.bundle_id == "uuid-1"
         assert result.version == "1.0.0"
         assert result.state == BundleVersionState.PUBLISHED

@@ -7,7 +7,13 @@ import hashlib
 import threading
 from typing import TYPE_CHECKING
 
-from musher._bundle import Asset, Bundle, ManifestAsset, ResolveResult, _SDKSchema
+from musher._bundle import (
+    Asset,
+    Bundle,
+    ManifestAsset,
+    ResolveResult,
+    _SDKSchema,  # pyright: ignore[reportPrivateUsage]
+)
 from musher._cache import BundleCache
 from musher._config import MusherConfig, get_config
 from musher._errors import IntegrityError
@@ -15,6 +21,7 @@ from musher._http import HTTPTransport
 from musher._types import AssetType, BundleRef
 
 if TYPE_CHECKING:
+    from collections.abc import Coroutine
     from types import TracebackType
 
 
@@ -40,9 +47,11 @@ class AsyncClient:
     """
 
     def __init__(self, config: MusherConfig | None = None) -> None:
-        self._config = config or get_config()
-        self._http = HTTPTransport(self._config)
-        self._cache = BundleCache(self._config.cache_dir, registry_url=self._config.registry_url)
+        self._config: MusherConfig = config or get_config()
+        self._http: HTTPTransport = HTTPTransport(self._config)
+        self._cache: BundleCache = BundleCache(
+            self._config.cache_dir, registry_url=self._config.registry_url
+        )
 
     async def __aenter__(self) -> AsyncClient:
         return self
@@ -94,7 +103,8 @@ class AsyncClient:
             f"/v1/namespaces/{parsed.namespace}/bundles/{parsed.slug}:resolve",
             params=params or None,
         )
-        result = ResolveResult.model_validate(response.json())
+        response_data: dict[str, object] = response.json()  # pyright: ignore[reportAny]
+        result = ResolveResult.model_validate(response_data)
 
         # Cache the manifest with metadata
         if result.version:
@@ -102,7 +112,7 @@ class AsyncClient:
                 parsed.namespace,
                 parsed.slug,
                 result.version,
-                response.json(),
+                response_data,
                 oci_digest=result.oci_digest,
             )
             # Cache ref mapping for unversioned refs (but not digest lookups)
@@ -188,7 +198,7 @@ class AsyncClient:
 
             assets[layer.asset_id] = asset
 
-        await asyncio.gather(*[_fetch_layer(layer) for layer in result.manifest.layers])
+        _ = await asyncio.gather(*[_fetch_layer(layer) for layer in result.manifest.layers])
 
         return Bundle(
             ref=result.ref,
@@ -206,10 +216,12 @@ class Client:
     """
 
     def __init__(self, config: MusherConfig | None = None) -> None:
-        self._loop = asyncio.new_event_loop()
-        self._thread = threading.Thread(target=self._loop.run_forever, daemon=True)
+        self._loop: asyncio.AbstractEventLoop = asyncio.new_event_loop()
+        self._thread: threading.Thread = threading.Thread(
+            target=self._loop.run_forever, daemon=True
+        )
         self._thread.start()
-        self._async_client = AsyncClient(config=config)
+        self._async_client: AsyncClient = AsyncClient(config=config)
 
     def __enter__(self) -> Client:
         return self
@@ -222,25 +234,25 @@ class Client:
     ) -> None:
         self.close()
 
-    def _run(self, coro: object) -> object:
+    def _run[T](self, coro: Coroutine[object, object, T]) -> T:
         """Submit a coroutine to the background loop and block for the result."""
-        future = asyncio.run_coroutine_threadsafe(coro, self._loop)  # type: ignore[arg-type]
+        future = asyncio.run_coroutine_threadsafe(coro, self._loop)
         return future.result()
 
     def close(self) -> None:
         """Release any held resources."""
         self._run(self._async_client.close())
-        self._loop.call_soon_threadsafe(self._loop.stop)
+        _ = self._loop.call_soon_threadsafe(self._loop.stop)
         self._thread.join(timeout=5)
 
     def pull(self, ref: str) -> Bundle:
         """Resolve, fetch, and verify a bundle (sync)."""
-        return self._run(self._async_client.pull(ref))  # type: ignore[return-value]
+        return self._run(self._async_client.pull(ref))
 
     def resolve(self, ref: str) -> ResolveResult:
         """Resolve a bundle reference (sync)."""
-        return self._run(self._async_client.resolve(ref))  # type: ignore[return-value]
+        return self._run(self._async_client.resolve(ref))
 
     def fetch_asset(self, asset_id: str, *, version: str | None = None) -> Asset:
         """Fetch a single asset by ID (sync)."""
-        return self._run(self._async_client.fetch_asset(asset_id, version=version))  # type: ignore[return-value]
+        return self._run(self._async_client.fetch_asset(asset_id, version=version))

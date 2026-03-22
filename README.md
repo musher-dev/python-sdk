@@ -64,7 +64,7 @@ import musher
 
 # All parameters are optional — omitted values auto-discover
 musher.configure(
-    api_key="your-token",          # or token="your-token"
+    api_key="your-token",  # or token="your-token"
     api_url="https://custom.dev",  # or registry_url="https://custom.dev"
     cache_dir=Path("/tmp/cache"),
 )

@@ -23,7 +23,7 @@ APP_NAME = "musher"
 
 
 def _resolve_root(branded_var: str, category: str, platform_fn: Callable[..., Path]) -> Path:
-    """Resolve a directory root using the standard precedence chain.
+    r"""Resolve a directory root using the standard precedence chain.
 
     1. Branded env var (e.g. ``MUSHER_CACHE_HOME``)
     2. ``MUSHER_HOME/<category>`` umbrella

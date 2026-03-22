@@ -31,13 +31,12 @@ To override explicitly in code: `musher.configure(token="your-token")`.
 | `basics/pull_bundle.py` | Pull a bundle and list its files | — | Working |
 | `basics/inspect_manifest.py` | Resolve and inspect a manifest without pulling | — | Working |
 | `basics/bundle_resources.py` | Access prompts, toolsets, and agent specs | — | Working |
-| `claude/install_project_skills.py` | Install skills to a project `.claude/skills/` dir | — | Preview |
-| `claude/export_plugin.py` | Select skills and export as a Claude plugin | — | Preview |
-| `openai/local_shell_skill.py` | Export a skill as a local directory for OpenAI | — | Preview |
-| `openai/hosted_inline_skill.py` | Export a skill as an inline zip for OpenAI | — | Preview |
-| `pydantic_ai/instructions_from_bundle.py` | Use bundle prompts as PydanticAI agent instructions | `pydantic-ai` | Preview |
+| `claude/install_project_skills.py` | Install skills to a project `.claude/skills/` dir | — | Working |
+| `claude/export_plugin.py` | Select skills and export as a Claude plugin | — | Working |
+| `openai/local_shell_skill.py` | Export a skill as a local directory for OpenAI | `openai-agents` | Working |
+| `openai/hosted_inline_skill.py` | Export a skill as an inline zip for OpenAI | `openai-agents` | Working |
+| `pydantic_ai/instructions_from_bundle.py` | Use bundle prompts as PydanticAI agent instructions | `pydantic-ai` | Working |
 
-**Working** examples use only implemented SDK methods and will run end-to-end.
-
-**Preview** examples demonstrate the intended API for methods that are not yet
-implemented. They will raise `NotImplementedError` at the marked call site.
+All examples use implemented SDK methods. Bundle references (e.g.
+`"acme/prompt-library:1.2.0"`) are placeholders — replace them with a real
+bundle ref from your Musher registry before running.

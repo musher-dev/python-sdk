@@ -9,6 +9,7 @@ import tempfile
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import cast
 
 from musher._export import ClaudePluginExport, OpenAIInlineSkill, OpenAILocalSkill
 
@@ -82,7 +83,7 @@ class SkillHandle:
         for relative_path, fh in self._files.items():
             out = skill_dir / relative_path
             out.parent.mkdir(parents=True, exist_ok=True)
-            out.write_bytes(fh.bytes())
+            _ = out.write_bytes(fh.bytes())
         return skill_dir
 
     def export_zip(self, dest: Path | None = None) -> Path:
@@ -121,9 +122,9 @@ class ToolsetHandle:
         """Return toolset text content."""
         return self.file.text()
 
-    def parse_json(self) -> dict:  # type: ignore[type-arg]
+    def parse_json(self) -> dict[str, object]:
         """Parse toolset content as JSON."""
-        return json.loads(self.file.bytes())
+        return cast("dict[str, object]", json.loads(self.file.bytes()))
 
 
 @dataclass(frozen=True, slots=True)
@@ -137,9 +138,9 @@ class AgentSpecHandle:
         """Return agent spec text content."""
         return self.file.text()
 
-    def parse_json(self) -> dict:  # type: ignore[type-arg]
+    def parse_json(self) -> dict[str, object]:
         """Parse agent spec content as JSON."""
-        return json.loads(self.file.bytes())
+        return cast("dict[str, object]", json.loads(self.file.bytes()))
 
 
 @dataclass
@@ -211,21 +212,19 @@ class BundleSelection:
 
         skills_manifest: list[dict[str, str]] = []
         for skill in self._skills.values():
-            skill.export_path(dest=plugin_root / "skills")
-            skills_manifest.append(
-                {
-                    "name": skill.name,
-                    "description": skill.description,
-                    "path": f"skills/{skill.name}",
-                }
-            )
+            _ = skill.export_path(dest=plugin_root / "skills")
+            skills_manifest.append({
+                "name": skill.name,
+                "description": skill.description,
+                "path": f"skills/{skill.name}",
+            })
 
         manifest = {
             "name": plugin_name,
             "version": "1.0.0",
             "skills": skills_manifest,
         }
-        (plugin_meta_dir / "plugin.json").write_text(
+        _ = (plugin_meta_dir / "plugin.json").write_text(
             json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
         )
 

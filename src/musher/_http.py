@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import httpx
 
@@ -21,7 +21,7 @@ class HTTPTransport:
     """Thin wrapper around ``httpx.AsyncClient`` with auth and error mapping."""
 
     def __init__(self, config: MusherConfig) -> None:
-        self._config = config
+        self._config: MusherConfig = config
         self._client: httpx.AsyncClient | None = None
 
     def _ensure_client(self) -> httpx.AsyncClient:
@@ -39,7 +39,7 @@ class HTTPTransport:
             )
         return self._client
 
-    async def get(self, path: str, *, params: dict[str, Any] | None = None) -> httpx.Response:
+    async def get(self, path: str, *, params: dict[str, str] | None = None) -> httpx.Response:
         """Send a GET request and map errors."""
         client = self._ensure_client()
         response = await client.get(path, params=params)
@@ -67,17 +67,20 @@ def _raise_for_status(response: httpx.Response) -> None:
         raise BundleNotFoundError(str(response.url))
 
     if status == 429:  # noqa: PLR2004
-        retry_after = response.headers.get("Retry-After")
-        raise RateLimitError(retry_after=float(retry_after) if retry_after else None)
+        retry_after_header: str | None = response.headers.get("Retry-After")  # pyright: ignore[reportAny]
+        raise RateLimitError(retry_after=float(retry_after_header) if retry_after_header else None)
 
     # Try RFC 9457 Problem Details
     try:
-        body = response.json()
+        body: dict[str, object] = response.json()  # pyright: ignore[reportAny]
+        title = body.get("title", response.reason_phrase)
+        detail = body.get("detail", "")
+        type_uri = body.get("type", "")
         raise APIError(
             status=status,
-            title=body.get("title", response.reason_phrase),
-            detail=body.get("detail", ""),
-            type_uri=body.get("type", ""),
+            title=str(title),
+            detail=str(detail),
+            type_uri=str(type_uri),
         )
     except (ValueError, KeyError):
         raise APIError(

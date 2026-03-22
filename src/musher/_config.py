@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from musher._paths import (
     cache_dir as _default_cache_dir,
@@ -66,9 +66,9 @@ def configure(  # noqa: PLR0913
 
     # Resolve token: explicit token > explicit api_key > credential chain
     if token is not _UNSET:
-        resolved_token: str | None = token  # type: ignore[assignment]
+        resolved_token = cast("str | None", token)
     elif api_key is not _UNSET:
-        resolved_token = api_key  # type: ignore[assignment]
+        resolved_token = cast("str | None", api_key)
     else:
         resolved_token = resolve_token(registry_url=resolved_url, data_dir=resolved_data_dir)
 
