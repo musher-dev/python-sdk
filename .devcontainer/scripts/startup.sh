@@ -7,8 +7,10 @@
 # Usage: Called automatically by devcontainer.json postStartCommand.
 set -euo pipefail
 
-readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly COMPOSE_FILE="$(cd "${SCRIPT_DIR}/.." && pwd)/compose.yaml"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
+COMPOSE_FILE="$(cd "${SCRIPT_DIR}/.." && pwd)/compose.yaml"
+readonly COMPOSE_FILE
 
 # shellcheck source=lib/common.sh
 source "${SCRIPT_DIR}/lib/common.sh"
