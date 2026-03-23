@@ -84,6 +84,8 @@ main() {
   base_setup
   setup_shell_customization
   # --- Add repo-specific setup below ---
+  log "Installing Python dependencies (including examples)..."
+  cd /workspaces/python-sdk && uv sync --dev --extra examples
   log "Post-create setup completed"
 }
 

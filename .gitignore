@@ -19,3 +19,6 @@ dist/
 .coverage
 htmlcov/
 .task/
+
+# Musher SDK local exports
+.musher/

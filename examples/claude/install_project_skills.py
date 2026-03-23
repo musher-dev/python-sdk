@@ -2,9 +2,14 @@
 
 Replaces fragile symlink-based workflows with a real directory install.
 Handles file copying, cleanup of stale skills, and directory structure.
+
+Requires: pip install claude-agent-sdk
 """
 
+import asyncio
 from pathlib import Path
+
+from claude_agent_sdk import ClaudeAgentOptions, query
 
 import musher
 
@@ -31,16 +36,21 @@ for skill in bundle.skills():
     print(f"  {skill.name}: {skill.description}")
     print(f"    Files: {len(skill.files())}")
 
-# To use these skills with the Claude Agent SDK:
-#
-#   from claude_agent_sdk import ClaudeAgentOptions, query
-#
-#   options = ClaudeAgentOptions(
-#       cwd=str(Path(__file__).resolve().parents[1]),
-#       setting_sources=["project"],
-#       allowed_tools=["Skill", "Read", "Grep", "Glob", "Bash"],
-#       max_turns=4,
-#   )
-#
-#   async for message in query(prompt="What skills are available?", options=options):
-#       ...
+PROJECT_DIR = str(Path(__file__).resolve().parents[1])
+
+
+async def main() -> None:
+    """Query Claude with the installed project skills discovered automatically."""
+    options = ClaudeAgentOptions(
+        cwd=PROJECT_DIR,
+        setting_sources=["project"],
+        allowed_tools=["Skill", "Read", "Grep", "Glob", "Bash"],
+        max_turns=4,
+    )
+
+    async for message in query(prompt="What skills are available?", options=options):
+        print(message)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

@@ -14,7 +14,9 @@ dependencies = [
 
 [project.optional-dependencies]
 examples = [
-    "openai-agents>=0.1",
+    "openai-agents>=0.13",
+    "pydantic-ai>=1.0",
+    "claude-agent-sdk>=0.1",
 ]
 
 [dependency-groups]
@@ -134,7 +136,7 @@ fixable = ["ALL"]
     "D",
 ]
 "__init__.py" = ["F401", "RUF067"]
-"examples/**/*" = ["T201", "S106", "ERA001", "ANN", "D"]
+"examples/**/*" = ["T201", "S106", "S603", "S604", "S605", "S607", "ERA001", "ANN", "D"]
 
 [tool.ruff.lint.pylint]
 max-args = 8
