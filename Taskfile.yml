@@ -6,6 +6,11 @@ tasks:
     cmds:
       - uv sync --dev
 
+  setup:examples:
+    desc: Install dependencies including example extras
+    cmds:
+      - uv sync --dev --extra examples
+
   check:
     desc: Run all checks (format + lint + types + test)
     cmds:

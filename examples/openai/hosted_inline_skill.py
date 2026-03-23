@@ -15,27 +15,27 @@ import musher
 # Credentials auto-discovered from MUSHER_API_KEY env var, keyring,
 # or credential file. To override: musher.configure(token="your-token")
 
-bundle = musher.pull("acme/data-workflows:2.0.0")
-skill = bundle.skill("csv-insights")
-inline = skill.export_openai_inline_skill()
-
-agent = Agent(
-    name="Hosted CSV Analyst",
-    model="gpt-4.1",
-    instructions="Use the inline skill when it helps.",
-    tools=[
-        ShellTool(
-            environment={
-                "type": "container_auto",
-                "network_policy": {"type": "disabled"},
-                "skills": [inline.to_dict()],
-            }
-        )
-    ],
-)
-
 
 async def main() -> None:
+    bundle = musher.pull("acme/data-workflows:2.0.0")
+    skill = bundle.skill("csv-insights")
+    inline = skill.export_openai_inline_skill()
+
+    agent = Agent(
+        name="Hosted CSV Analyst",
+        model="gpt-4.1",
+        instructions="Use the inline skill when it helps.",
+        tools=[
+            ShellTool(
+                environment={
+                    "type": "container_auto",
+                    "network_policy": {"type": "disabled"},
+                    "skills": [inline.to_dict()],
+                }
+            )
+        ],
+    )
+
     result = await Runner.run(
         agent,
         (

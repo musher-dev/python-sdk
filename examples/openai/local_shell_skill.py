@@ -27,6 +27,9 @@ import musher
 PROJECT_DIR = Path(__file__).resolve().parents[2]
 
 
+# WARNING: This executor runs arbitrary shell commands on the local machine.
+# It is intended for development and demonstration only. Do not use in
+# production without sandboxing and command allowlisting.
 class RepoShell:
     """Minimal local shell executor for the OpenAI Agents SDK."""
 
@@ -61,24 +64,23 @@ class RepoShell:
         )
 
 
-bundle = musher.pull("acme/engineering-workflows:2.0.0")
-skill = bundle.skill("repo-maintainer")
-local = skill.export_openai_local_skill(dest=PROJECT_DIR / ".musher" / "openai" / "skills")
-
-agent = Agent(
-    name="Repo Triage Assistant",
-    model="gpt-4.1",
-    instructions="Use the local skill when it helps. Keep the answer concise and actionable.",
-    tools=[
-        ShellTool(
-            executor=RepoShell(PROJECT_DIR),
-            environment={"type": "local", "skills": [local.to_dict()]},
-        )
-    ],
-)
-
-
 async def main() -> None:
+    bundle = musher.pull("acme/engineering-workflows:2.0.0")
+    skill = bundle.skill("repo-maintainer")
+    local = skill.export_openai_local_skill(dest=PROJECT_DIR / ".musher" / "openai" / "skills")
+
+    agent = Agent(
+        name="Repo Triage Assistant",
+        model="gpt-4.1",
+        instructions="Use the local skill when it helps. Keep the answer concise and actionable.",
+        tools=[
+            ShellTool(
+                executor=RepoShell(PROJECT_DIR),
+                environment={"type": "local", "skills": [local.to_dict()]},
+            )
+        ],
+    )
+
     result = await Runner.run(
         agent,
         "Use the repo-maintainer skill to inspect this repository and tell me the first onboarding issue I should fix.",

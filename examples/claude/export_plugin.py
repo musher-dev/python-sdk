@@ -2,9 +2,14 @@
 
 Demonstrates per-session skill narrowing — only expose the skills your agent
 actually needs, reducing the skill surface area and avoiding tool overload.
+
+Requires: pip install claude-agent-sdk
 """
 
+import asyncio
 from pathlib import Path
+
+from claude_agent_sdk import ClaudeAgentOptions, query
 
 import musher
 
@@ -28,19 +33,24 @@ print(f"Plugin exported to: {plugin.path}")
 for skill in selection.skills():
     print(f"  Skill: {skill.name} — {skill.description}")
 
-# To load this plugin with the Claude Agent SDK:
-#
-#   from claude_agent_sdk import ClaudeAgentOptions, query
-#
-#   options = ClaudeAgentOptions(
-#       cwd=str(Path(__file__).resolve().parents[1]),
-#       plugins=[{"type": "local", "path": str(plugin.path)}],
-#       allowed_tools=["Skill", "Read", "Grep", "Glob", "Bash"],
-#       max_turns=3,
-#   )
-#
-#   async for message in query(
-#       prompt="What custom commands do you have available?",
-#       options=options,
-#   ):
-#       ...
+PROJECT_DIR = str(Path(__file__).resolve().parents[1])
+
+
+async def main() -> None:
+    """Query Claude with the exported plugin loaded."""
+    options = ClaudeAgentOptions(
+        cwd=PROJECT_DIR,
+        plugins=[{"type": "local", "path": str(plugin.path)}],
+        allowed_tools=["Skill", "Read", "Grep", "Glob", "Bash"],
+        max_turns=3,
+    )
+
+    async for message in query(
+        prompt="What custom commands do you have available?",
+        options=options,
+    ):
+        print(message)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
