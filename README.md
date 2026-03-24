@@ -17,7 +17,7 @@ pip install musher-sdk
 import musher
 
 # Explicit token
-musher.configure(api_key="your-token")
+musher.configure(token="your-token")
 
 bundle = musher.pull("myorg/my-bundle:1.0.0")
 
@@ -64,8 +64,8 @@ import musher
 
 # All parameters are optional — omitted values auto-discover
 musher.configure(
-    api_key="your-token",  # or token="your-token"
-    api_url="https://custom.dev",  # or registry_url="https://custom.dev"
+    token="your-token",
+    registry_url="https://custom.dev",
     cache_dir=Path("/tmp/cache"),
 )
 ```
@@ -87,12 +87,8 @@ The SDK uses a content-addressable disk cache:
 - Sync (`Client`) and async (`AsyncClient`) clients
 - Content-addressable cache with TTL and garbage collection
 - Typed handles: skills, prompts, toolsets, agent specs
-
-## What's Stubbed
-
-- `export_claude_plugin()`, `install_vscode_skills()`, `install_claude_skills()`
-- `write_lockfile()`, `verify()`
-- OCI direct pull (`OCIClient`)
+- `export_claude_plugin()` — export bundle as a Claude plugin
+- `install_claude_skills()` — install skills to a directory
 
 ## License
 

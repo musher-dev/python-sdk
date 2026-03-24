@@ -1,7 +1,6 @@
 """Tests for _bundle module — Pydantic model deserialization, Asset/Bundle construction."""
 
 import json
-from pathlib import Path
 
 import pytest
 
@@ -207,11 +206,6 @@ class TestBundle:
         assert bundle.file("nonexistent") is None
         assert len(bundle.files()) == 1
 
-    def test_verify_raises_not_implemented(self):
-        bundle = Bundle(ref="org/bundle", version="1.0.0", resolve_result=_make_resolve())
-        with pytest.raises(NotImplementedError):
-            bundle.verify()
-
     def test_skills(self):
         bundle = _make_bundle_with_typed_assets()
         skills = bundle.skills()
@@ -366,13 +360,3 @@ class TestBundle:
         bundle.install_claude_skills(tmp_path, skills=["search"], clean=True)
         assert user_skill.is_dir()
         assert (user_skill / "SKILL.md").read_text() == "# Custom"
-
-    def test_install_vscode_skills_raises_not_implemented(self):
-        bundle = _make_bundle_with_typed_assets()
-        with pytest.raises(NotImplementedError):
-            bundle.install_vscode_skills(Path("/tmp/skills"))
-
-    def test_write_lockfile_raises_not_implemented(self):
-        bundle = _make_bundle_with_typed_assets()
-        with pytest.raises(NotImplementedError):
-            bundle.write_lockfile()

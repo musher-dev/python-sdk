@@ -1,5 +1,7 @@
 """Musher Python SDK — programmatic access to the Musher bundle registry."""
 
+from importlib.metadata import PackageNotFoundError, version as _metadata_version
+
 from musher._auth import resolve_registry_url
 from musher._bundle import Asset, Bundle, Manifest, ManifestAsset, ResolveResult
 from musher._client import AsyncClient, Client
@@ -25,8 +27,6 @@ from musher._handles import (
     ToolsetHandle,
 )
 from musher._types import (
-    OCI_MEDIA_TYPE_ASSET,
-    OCI_MEDIA_TYPE_CONFIG,
     AssetType,
     BundleRef,
     BundleSourceType,
@@ -34,9 +34,12 @@ from musher._types import (
     BundleVisibility,
 )
 
+try:
+    __version__ = _metadata_version("musher-sdk")
+except PackageNotFoundError:
+    __version__ = "0.0.0+unknown"
+
 __all__ = [
-    "OCI_MEDIA_TYPE_ASSET",
-    "OCI_MEDIA_TYPE_CONFIG",
     "APIError",
     "AgentSpecHandle",
     "Asset",
@@ -68,6 +71,7 @@ __all__ = [
     "SkillHandle",
     "ToolsetHandle",
     "VersionNotFoundError",
+    "__version__",
     "configure",
     "get_config",
     "pull",
