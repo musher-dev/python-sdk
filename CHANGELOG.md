@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/musher-dev/python-sdk/compare/0.2.0...0.2.1) (2026-03-24)
+
+
+### Bug Fixes
+
+* configure release-please to bump pyproject.toml version ([5fed830](https://github.com/musher-dev/python-sdk/commit/5fed8305e00e9b1a2919f0a04e7a04437f74840d))
+* configure release-please to bump pyproject.toml version ([faf3f5b](https://github.com/musher-dev/python-sdk/commit/faf3f5bcdc3b9b1f4144f5997ea58306f995a763))
+
 ## [0.2.0](https://github.com/musher-dev/python-sdk/compare/0.1.1...0.2.0) (2026-03-24)
 
 
