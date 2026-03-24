@@ -2,15 +2,30 @@ name: Release
 
 on:
   push:
-    tags: ["v*"]
+    branches: [main]
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
   id-token: write
   attestations: write
 
 jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          config-file: .github/release-please/config.json
+          manifest-file: .github/release-please/manifest.json
+
   build:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -50,8 +65,8 @@ jobs:
           password: ${{ secrets.TEST_PYPI_API_TOKEN }}
 
   publish-pypi:
-    needs: build
-    if: ${{ !contains(github.ref_name, '-') }}
+    needs: [build, release-please]
+    if: ${{ !contains(needs.release-please.outputs.tag_name, '-') }}
     runs-on: ubuntu-latest
     environment: release
     steps:
