@@ -38,12 +38,12 @@ _RESOLVE_RESPONSE = {
 }
 
 _ASSET_RESPONSE = {
-    "assetId": "asset-1",
+    "id": "asset-1",
     "logicalPath": "skills/greet/SKILL.md",
     "assetType": "skill",
-    "content": "Hello skill",
+    "contentText": "Hello skill",
     "contentSha256": hashlib.sha256(b"Hello skill").hexdigest(),
-    "sizeBytes": 11,
+    "contentSizeBytes": 11,
     "mediaType": "text/markdown",
 }
 
@@ -129,7 +129,7 @@ class TestAsyncClient:
 
     @respx.mock
     async def test_pull_checksum_mismatch(self, config: MusherConfig):
-        bad_asset = {**_ASSET_RESPONSE, "content": "WRONG CONTENT"}
+        bad_asset = {**_ASSET_RESPONSE, "contentText": "WRONG CONTENT"}
         respx.get(f"{_BASE}/v1/namespaces/myorg/bundles/my-bundle:resolve").mock(
             return_value=httpx.Response(200, json=_RESOLVE_RESPONSE)
         )

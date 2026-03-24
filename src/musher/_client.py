@@ -28,12 +28,12 @@ if TYPE_CHECKING:
 class _AssetResponse(_SDKSchema):
     """API response model for a single asset (camelCase wire format)."""
 
-    asset_id: str
+    id: str
     logical_path: str
     asset_type: str
-    content: str
+    content_text: str
     content_sha256: str
-    size_bytes: int
+    content_size_bytes: int | None = None
     media_type: str | None = None
 
 
@@ -135,15 +135,15 @@ class AsyncClient:
             params=params or None,
         )
         data = _AssetResponse.model_validate(response.json())
-        content = data.content.encode()
+        content = data.content_text.encode()
 
         return Asset(
-            asset_id=data.asset_id,
+            asset_id=data.id,
             logical_path=data.logical_path,
             asset_type=AssetType(data.asset_type),
             content=content,
             content_sha256=data.content_sha256,
-            size_bytes=data.size_bytes,
+            size_bytes=data.content_size_bytes or len(content),
             media_type=data.media_type,
         )
 
