@@ -57,30 +57,10 @@ class TestConfigure:
         cfg = get_config()
         assert cfg.token == "auto-discovered"
 
-    def test_api_key_alias(self):
-        configure(api_key="alias-token")
-        cfg = get_config()
-        assert cfg.token == "alias-token"
-
-    def test_token_takes_precedence_over_api_key(self):
-        configure(token="explicit-token", api_key="alias-token")
-        cfg = get_config()
-        assert cfg.token == "explicit-token"
-
-    def test_api_url_alias(self):
-        configure(api_url="https://alias.dev")
-        cfg = get_config()
-        assert cfg.registry_url == "https://alias.dev"
-
-    def test_registry_url_takes_precedence_over_api_url(self):
-        configure(registry_url="https://primary.dev", api_url="https://alias.dev")
-        cfg = get_config()
-        assert cfg.registry_url == "https://primary.dev"
-
-    def test_configure_passes_url_to_resolve_token(self):
-        """configure(api_url=...) should pass that URL to resolve_token for keyring lookup."""
+    def test_configure_passes_registry_url_to_resolve_token(self):
+        """configure(registry_url=...) should pass that URL to resolve_token for keyring lookup."""
         with patch("musher._auth.resolve_token", return_value="tok") as mock_resolve:
-            configure(api_url="https://staging.musher.dev")
+            configure(registry_url="https://staging.musher.dev")
         call_kwargs = mock_resolve.call_args[1]
         assert call_kwargs["registry_url"] == "https://staging.musher.dev"
         assert "data_dir" in call_kwargs

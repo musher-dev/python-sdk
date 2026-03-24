@@ -7,8 +7,6 @@ on:
 permissions:
   contents: write
   pull-requests: write
-  id-token: write
-  attestations: write
 
 jobs:
   release-please:
@@ -27,6 +25,10 @@ jobs:
     needs: release-please
     if: ${{ needs.release-please.outputs.release_created }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@v4
 
@@ -53,6 +55,8 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     environment: testpypi
+    permissions:
+      id-token: write
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -62,13 +66,14 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
-          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
 
   publish-pypi:
     needs: [build, release-please]
     if: ${{ !contains(needs.release-please.outputs.tag_name, '-') }}
     runs-on: ubuntu-latest
     environment: release
+    permissions:
+      id-token: write
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -76,5 +81,3 @@ jobs:
           path: dist/
 
       - uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          password: ${{ secrets.PYPI_API_TOKEN }}

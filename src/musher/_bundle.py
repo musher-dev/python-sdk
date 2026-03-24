@@ -182,7 +182,7 @@ class Bundle:
     _toolset_handles: dict[str, ToolsetHandle] | None = field(default=None, repr=False)
     _agent_spec_handles: dict[str, AgentSpecHandle] | None = field(default=None, repr=False)
 
-    # ── File access (replaces asset/assets/assets_by_type) ──────────
+    # ── File access ──────────────────────────────────────────────
 
     def file(self, logical_path: str) -> FileHandle | None:
         """Get a single file by logical path."""
@@ -288,7 +288,7 @@ class Bundle:
             _files=sel_files,
         )
 
-    # ── Export / install stubs ──────────────────────────────────────
+    # ── Export / install ───────────────────────────────────────────
 
     def export_claude_plugin(
         self,
@@ -298,16 +298,6 @@ class Bundle:
     ) -> ClaudePluginExport:
         """Export bundle as a Claude plugin."""
         return self.select(skills=skills).export_claude_plugin(plugin_name, dest=dest)
-
-    def install_vscode_skills(
-        self,
-        _dest: Path,
-        _skills: list[str] | None = None,
-        *,
-        _clean: bool = False,
-    ) -> None:
-        """Install skills to a VS Code skills directory. Raises NotImplementedError (stub)."""
-        raise NotImplementedError
 
     def install_claude_skills(
         self,
@@ -344,14 +334,6 @@ class Bundle:
             _ = (dest / skill.name / ".musher-managed").write_text(
                 _json.dumps(marker_data, indent=2) + "\n", encoding="utf-8"
             )
-
-    def write_lockfile(self, _dest: Path | None = None) -> Path:
-        """Write a lockfile for the current bundle. Raises NotImplementedError (stub)."""
-        raise NotImplementedError
-
-    def verify(self) -> bool:
-        """Verify all asset checksums. Raises NotImplementedError (stub)."""
-        raise NotImplementedError
 
     # ── Internal ────────────────────────────────────────────────────
 

@@ -39,9 +39,7 @@ _global_config: MusherConfig | None = None
 def configure(  # noqa: PLR0913
     *,
     token: object = _UNSET,
-    api_key: object = _UNSET,
     registry_url: str | None = None,
-    api_url: str | None = None,
     cache_dir: Path | None = None,
     config_dir: Path | None = None,
     data_dir: Path | None = None,
@@ -52,23 +50,20 @@ def configure(  # noqa: PLR0913
 ) -> None:
     """Set global SDK configuration.
 
-    ``api_key`` is an alias for ``token``; ``api_url`` is an alias for
-    ``registry_url``.  When neither ``token`` nor ``api_key`` is provided,
-    the credential chain is used to auto-discover a token.
+    When ``token`` is not provided, the credential chain is used to
+    auto-discover a token.
     """
     from musher._auth import resolve_registry_url, resolve_token  # noqa: PLC0415
 
     global _global_config  # noqa: PLW0603
 
     # Resolve URL and data_dir first so token resolution can use them
-    resolved_url = registry_url or api_url or resolve_registry_url()
+    resolved_url = registry_url or resolve_registry_url()
     resolved_data_dir = data_dir or _default_data_dir()
 
-    # Resolve token: explicit token > explicit api_key > credential chain
+    # Resolve token: explicit token > credential chain
     if token is not _UNSET:
         resolved_token = cast("str | None", token)
-    elif api_key is not _UNSET:
-        resolved_token = cast("str | None", api_key)
     else:
         resolved_token = resolve_token(registry_url=resolved_url, data_dir=resolved_data_dir)
 

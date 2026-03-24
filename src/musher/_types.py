@@ -86,8 +86,3 @@ def _split_base(base: str) -> tuple[str, str]:
         msg = f"Invalid bundle reference: expected 'namespace/slug', got '{base}'"
         raise ValueError(msg)
     return parts[0], parts[1]
-
-
-# OCI media types for Musher bundle artifacts
-OCI_MEDIA_TYPE_ASSET = "application/vnd.musher.bundle.v1.asset"
-OCI_MEDIA_TYPE_CONFIG = "application/vnd.musher.bundle.v1.config"

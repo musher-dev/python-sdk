@@ -17,6 +17,16 @@ if TYPE_CHECKING:
     from musher._config import MusherConfig
 
 
+def _get_version() -> str:
+    """Read version from package metadata, with fallback."""
+    from importlib.metadata import version  # noqa: PLC0415
+
+    try:
+        return version("musher-sdk")
+    except Exception:  # noqa: BLE001
+        return "0.0.0"
+
+
 class HTTPTransport:
     """Thin wrapper around ``httpx.AsyncClient`` with auth and error mapping."""
 
@@ -26,7 +36,7 @@ class HTTPTransport:
 
     def _ensure_client(self) -> httpx.AsyncClient:
         if self._client is None:
-            headers: dict[str, str] = {"User-Agent": "musher-python/0.1.0"}
+            headers: dict[str, str] = {"User-Agent": f"musher-python/{_get_version()}"}
             if self._config.token:
                 headers["Authorization"] = f"Bearer {self._config.token}"
 

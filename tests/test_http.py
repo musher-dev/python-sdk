@@ -44,7 +44,7 @@ class TestAuthHeaders:
             return_value=httpx.Response(200, json={"ok": True})
         )
         await transport.get("/v1/test")
-        assert "musher-python/0.1.0" in route.calls[0].request.headers["User-Agent"]
+        assert route.calls[0].request.headers["User-Agent"].startswith("musher-python/")
 
 
 class TestErrorMapping:
