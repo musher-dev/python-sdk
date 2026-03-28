@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.0](https://github.com/musher-dev/python-sdk/compare/0.2.1...0.3.0) (2026-03-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* use :pull endpoint and logical paths for asset fetching
+
+### Features
+
+* use :pull endpoint and logical paths for asset fetching ([4c112ac](https://github.com/musher-dev/python-sdk/commit/4c112ac37fad5c86b1187953339fcbcc37bc3727))
+
 ## [0.2.1](https://github.com/musher-dev/python-sdk/compare/0.2.0...0.2.1) (2026-03-24)
 
 
