@@ -47,6 +47,21 @@ _ASSET_RESPONSE = {
     "mediaType": "text/markdown",
 }
 
+_PULL_RESPONSE = {
+    "namespace": "myorg",
+    "slug": "my-bundle",
+    "version": "1.0.0",
+    "name": "My Bundle",
+    "manifest": [
+        {
+            "logicalPath": "skills/greet/SKILL.md",
+            "assetType": "skill",
+            "contentText": "Hello skill",
+            "mediaType": "text/markdown",
+        }
+    ],
+}
+
 
 @pytest.fixture
 def config(tmp_path: Path) -> MusherConfig:
@@ -92,11 +107,13 @@ class TestAsyncClient:
 
     @respx.mock
     async def test_fetch_asset(self, config: MusherConfig):
-        respx.get(f"{_BASE}/v1/runner/assets/asset-1").mock(
-            return_value=httpx.Response(200, json=_ASSET_RESPONSE)
-        )
+        respx.get(
+            f"{_BASE}/v1/namespaces/myorg/bundles/my-bundle/assets/skills%2Fgreet%2FSKILL.md"
+        ).mock(return_value=httpx.Response(200, json=_ASSET_RESPONSE))
         async with AsyncClient(config=config) as client:
-            asset = await client.fetch_asset("asset-1")
+            asset = await client.fetch_asset(
+                "skills/greet/SKILL.md", namespace="myorg", slug="my-bundle"
+            )
         assert isinstance(asset, Asset)
         assert asset.asset_id == "asset-1"
         assert asset.content == b"Hello skill"
@@ -106,8 +123,8 @@ class TestAsyncClient:
         respx.get(f"{_BASE}/v1/namespaces/myorg/bundles/my-bundle:resolve").mock(
             return_value=httpx.Response(200, json=_RESOLVE_RESPONSE)
         )
-        respx.get(f"{_BASE}/v1/runner/assets/asset-1").mock(
-            return_value=httpx.Response(200, json=_ASSET_RESPONSE)
+        respx.get(f"{_BASE}/v1/namespaces/myorg/bundles/my-bundle/versions/1.0.0:pull").mock(
+            return_value=httpx.Response(200, json=_PULL_RESPONSE)
         )
         async with AsyncClient(config=config) as client:
             bundle = await client.pull("myorg/my-bundle:1.0.0")
@@ -129,12 +146,15 @@ class TestAsyncClient:
 
     @respx.mock
     async def test_pull_checksum_mismatch(self, config: MusherConfig):
-        bad_asset = {**_ASSET_RESPONSE, "contentText": "WRONG CONTENT"}
+        bad_pull = {
+            **_PULL_RESPONSE,
+            "manifest": [{**_PULL_RESPONSE["manifest"][0], "contentText": "WRONG CONTENT"}],
+        }
         respx.get(f"{_BASE}/v1/namespaces/myorg/bundles/my-bundle:resolve").mock(
             return_value=httpx.Response(200, json=_RESOLVE_RESPONSE)
         )
-        respx.get(f"{_BASE}/v1/runner/assets/asset-1").mock(
-            return_value=httpx.Response(200, json=bad_asset)
+        respx.get(f"{_BASE}/v1/namespaces/myorg/bundles/my-bundle/versions/1.0.0:pull").mock(
+            return_value=httpx.Response(200, json=bad_pull)
         )
         async with AsyncClient(config=config) as client:
             with pytest.raises(IntegrityError):
@@ -205,6 +225,34 @@ class TestAsyncClient:
             meta = json.loads(meta_path.read_text())
             assert meta["ociDigest"] == "sha256:abc123"
 
+    @respx.mock
+    async def test_pull_hub_fallback(self, config: MusherConfig):
+        """When namespaced :pull returns 403, falls back to hub :pull."""
+        respx.get(f"{_BASE}/v1/namespaces/myorg/bundles/my-bundle:resolve").mock(
+            return_value=httpx.Response(200, json=_RESOLVE_RESPONSE)
+        )
+        # Namespaced :pull returns 403 (not authorized for this namespace)
+        respx.get(f"{_BASE}/v1/namespaces/myorg/bundles/my-bundle/versions/1.0.0:pull").mock(
+            return_value=httpx.Response(
+                403,
+                json={
+                    "type": "https://api.platform.musher.dev/errors/forbidden",
+                    "title": "Forbidden",
+                    "status": 403,
+                    "detail": "Not authorized",
+                },
+            )
+        )
+        # Hub :pull succeeds
+        respx.get(f"{_BASE}/v1/hub/bundles/myorg/my-bundle/versions/1.0.0:pull").mock(
+            return_value=httpx.Response(200, json=_PULL_RESPONSE)
+        )
+        async with AsyncClient(config=config) as client:
+            bundle = await client.pull("myorg/my-bundle:1.0.0")
+        assert isinstance(bundle, Bundle)
+        assert bundle.version == "1.0.0"
+        assert len(bundle.files()) == 1
+
 
 class TestClient:
     def test_instantiation(self, config: MusherConfig):
@@ -221,8 +269,8 @@ class TestClient:
         respx.get(f"{_BASE}/v1/namespaces/myorg/bundles/my-bundle:resolve").mock(
             return_value=httpx.Response(200, json=_RESOLVE_RESPONSE)
         )
-        respx.get(f"{_BASE}/v1/runner/assets/asset-1").mock(
-            return_value=httpx.Response(200, json=_ASSET_RESPONSE)
+        respx.get(f"{_BASE}/v1/namespaces/myorg/bundles/my-bundle/versions/1.0.0:pull").mock(
+            return_value=httpx.Response(200, json=_PULL_RESPONSE)
         )
         with Client(config=config) as client:
             bundle = client.pull("myorg/my-bundle:1.0.0")
