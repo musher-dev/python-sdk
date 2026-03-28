@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import threading
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from musher._bundle import (
     Asset,
@@ -16,7 +16,7 @@ from musher._bundle import (
 )
 from musher._cache import BundleCache
 from musher._config import MusherConfig, get_config
-from musher._errors import IntegrityError
+from musher._errors import APIError, IntegrityError
 from musher._http import HTTPTransport
 from musher._types import AssetType, BundleRef
 
@@ -121,17 +121,27 @@ class AsyncClient:
 
         return result
 
-    async def fetch_asset(self, asset_id: str, *, version: str | None = None) -> Asset:
-        """Fetch a single asset by ID.
+    async def fetch_asset(
+        self,
+        logical_path: str,
+        *,
+        namespace: str,
+        slug: str,
+        version: str | None = None,
+    ) -> Asset:
+        """Fetch a single asset by logical path.
 
-        Hits ``GET /v1/runner/assets/{id}``.
+        Hits ``GET /v1/namespaces/{ns}/bundles/{slug}/assets/{path}``.
         """
+        import urllib.parse  # noqa: PLC0415
+
+        encoded_path = urllib.parse.quote(logical_path, safe="")
         params: dict[str, str] = {}
         if version:
             params["version"] = version
 
         response = await self._http.get(
-            f"/v1/runner/assets/{asset_id}",
+            f"/v1/namespaces/{namespace}/bundles/{slug}/assets/{encoded_path}",
             params=params or None,
         )
         data = _AssetResponse.model_validate(response.json())
@@ -165,15 +175,18 @@ class AsyncClient:
                 resolve_result=result,
             )
 
-        # Determine which assets need fetching vs cache hits
-        semaphore = asyncio.Semaphore(10)
-        assets: dict[str, Asset] = {}
+        # Build a lookup of manifest layers by logical_path for checksum verification
+        layer_map: dict[str, ManifestAsset] = {
+            layer.logical_path: layer for layer in result.manifest.layers
+        }
 
-        async def _fetch_layer(layer: ManifestAsset) -> None:
-            # Check blob cache first
+        # Check if all blobs are cached
+        all_cached = True
+        assets: dict[str, Asset] = {}
+        for layer in result.manifest.layers:
             cached_blob = self._cache.get_blob(layer.content_sha256)
             if cached_blob is not None:
-                assets[layer.asset_id] = Asset(
+                assets[layer.logical_path] = Asset(
                     asset_id=layer.asset_id,
                     logical_path=layer.logical_path,
                     asset_type=AssetType(layer.asset_type),
@@ -182,23 +195,21 @@ class AsyncClient:
                     size_bytes=layer.size_bytes,
                     media_type=layer.media_type,
                 )
-                return
+            else:
+                all_cached = False
 
-            async with semaphore:
-                asset = await self.fetch_asset(layer.asset_id, version=result.version)
+        if all_cached:
+            return Bundle(
+                ref=result.ref,
+                version=result.version,
+                resolve_result=result,
+                _assets=assets,
+            )
 
-            # Verify checksum
-            if self._config.verify_checksums:
-                actual_sha = hashlib.sha256(asset.content).hexdigest()
-                if actual_sha != layer.content_sha256:
-                    raise IntegrityError(expected=layer.content_sha256, actual=actual_sha)
-
-            # Cache the blob
-            self._cache.put_blob(layer.content_sha256, asset.content)
-
-            assets[layer.asset_id] = asset
-
-        _ = await asyncio.gather(*[_fetch_layer(layer) for layer in result.manifest.layers])
+        # Fetch all assets via the :pull endpoint
+        pull_data = await self._pull_version(result.namespace, result.slug, result.version)
+        pull_manifest = cast("list[dict[str, object]]", pull_data.get("manifest", []))
+        assets = self._build_assets_from_pull(pull_manifest, layer_map)
 
         return Bundle(
             ref=result.ref,
@@ -206,6 +217,59 @@ class AsyncClient:
             resolve_result=result,
             _assets=assets,
         )
+
+    def _build_assets_from_pull(
+        self,
+        pull_manifest: list[dict[str, object]],
+        layer_map: dict[str, ManifestAsset],
+    ) -> dict[str, Asset]:
+        """Build Asset dict from a :pull response, verifying checksums against resolve manifest."""
+        assets: dict[str, Asset] = {}
+        for item in pull_manifest:
+            logical_path = str(item["logicalPath"])
+            content = str(item.get("contentText", "")).encode()
+            layer = layer_map.get(logical_path)
+
+            # Verify checksum against the resolve manifest
+            if layer and self._config.verify_checksums:
+                actual_sha = hashlib.sha256(content).hexdigest()
+                if actual_sha != layer.content_sha256:
+                    raise IntegrityError(expected=layer.content_sha256, actual=actual_sha)
+
+            content_sha256 = layer.content_sha256 if layer else hashlib.sha256(content).hexdigest()
+            self._cache.put_blob(content_sha256, content)
+
+            media_type = str(item.get("mediaType") or "") or (layer.media_type if layer else None)
+            assets[logical_path] = Asset(
+                asset_id=layer.asset_id if layer else logical_path,
+                logical_path=logical_path,
+                asset_type=AssetType(str(item["assetType"])),
+                content=content,
+                content_sha256=content_sha256,
+                size_bytes=layer.size_bytes if layer else len(content),
+                media_type=media_type or None,
+            )
+        return assets
+
+    async def _pull_version(self, namespace: str, slug: str, version: str) -> dict[str, object]:
+        """Fetch all assets for a version via the :pull endpoint.
+
+        Tries the namespaced endpoint first, falls back to the hub endpoint
+        for public bundles in other namespaces.
+        """
+        try:
+            response = await self._http.get(
+                f"/v1/namespaces/{namespace}/bundles/{slug}/versions/{version}:pull",
+            )
+            return response.json()  # pyright: ignore[reportAny]
+        except APIError as exc:
+            if exc.status != 403:  # noqa: PLR2004
+                raise
+        # Fall back to the hub endpoint for public bundles
+        response = await self._http.get(
+            f"/v1/hub/bundles/{namespace}/{slug}/versions/{version}:pull",
+        )
+        return response.json()  # pyright: ignore[reportAny]
 
 
 class Client:
@@ -253,6 +317,17 @@ class Client:
         """Resolve a bundle reference (sync)."""
         return self._run(self._async_client.resolve(ref))
 
-    def fetch_asset(self, asset_id: str, *, version: str | None = None) -> Asset:
-        """Fetch a single asset by ID (sync)."""
-        return self._run(self._async_client.fetch_asset(asset_id, version=version))
+    def fetch_asset(
+        self,
+        logical_path: str,
+        *,
+        namespace: str,
+        slug: str,
+        version: str | None = None,
+    ) -> Asset:
+        """Fetch a single asset by logical path (sync)."""
+        return self._run(
+            self._async_client.fetch_asset(
+                logical_path, namespace=namespace, slug=slug, version=version
+            )
+        )
