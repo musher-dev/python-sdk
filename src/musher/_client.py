@@ -22,7 +22,10 @@ from musher._types import AssetType, BundleRef
 
 if TYPE_CHECKING:
     from collections.abc import Coroutine
+    from pathlib import Path
     from types import TracebackType
+
+    from musher._cache_info import CacheInfo
 
 
 class _AssetResponse(_SDKSchema):
@@ -331,3 +334,37 @@ class Client:
                 logical_path, namespace=namespace, slug=slug, version=version
             )
         )
+
+    # ── Cache management ──────────────────────────────────────────
+
+    @property
+    def _cache(self) -> BundleCache:
+        return self._async_client._cache  # pyright: ignore[reportPrivateUsage]
+
+    def cache_info(self) -> CacheInfo:
+        """Return information about the local bundle cache."""
+        return self._cache.scan()
+
+    def cache_remove(self, ref: str) -> None:
+        """Remove a specific bundle from the cache.
+
+        Args:
+            ref: Bundle reference (e.g. ``"myorg/my-bundle:1.0.0"`` or ``"myorg/my-bundle"``).
+        """
+        parsed = BundleRef.parse(ref)
+        self._cache.purge(parsed.namespace, parsed.slug, parsed.version)
+
+    def cache_clear(self) -> None:
+        """Remove all cached data."""
+        self._cache.clear()
+
+    def cache_clean(self) -> int:
+        """Remove expired entries and garbage-collect orphaned blobs.
+
+        Returns the number of entries removed.
+        """
+        return self._cache.clean()
+
+    def cache_path(self) -> Path:
+        """Return the cache directory path."""
+        return self._cache.cache_dir

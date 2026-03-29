@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import cast
 from urllib.parse import urlparse
 
+from musher._cache_info import CachedBundle, CachedBundleVersion, CacheInfo
 from musher._config import get_config
 
 _CACHEDIR_TAG_HEADER = (
@@ -178,6 +179,78 @@ class BundleCache:
         }
         self._atomic_write_json(path, data)
 
+    # ── Inspection ─────────────────────────────────────────────────
+
+    def scan(self) -> CacheInfo:
+        """Walk the cache directory and return structured information."""
+        blob_sizes = self._scan_blobs()
+        bundles_tuple = self._scan_bundles(blob_sizes)
+        version_count = sum(len(b.versions) for b in bundles_tuple)
+        total_size = sum(blob_sizes.values()) + self._metadata_size()
+
+        return CacheInfo(
+            path=self._cache_dir,
+            total_size_bytes=total_size,
+            bundle_count=len(bundles_tuple),
+            version_count=version_count,
+            blob_count=len(blob_sizes),
+            bundles=bundles_tuple,
+        )
+
+    def _scan_blobs(self) -> dict[str, int]:
+        """Walk blobs directory and return {digest: size_bytes} mapping."""
+        blob_sizes: dict[str, int] = {}
+        blobs_dir = self._cache_dir / "blobs" / "sha256"
+        if not blobs_dir.is_dir():
+            return blob_sizes
+        for prefix_dir in blobs_dir.iterdir():
+            if not prefix_dir.is_dir():
+                continue
+            for blob_file in prefix_dir.iterdir():
+                if blob_file.is_file():
+                    blob_sizes[blob_file.name] = blob_file.stat().st_size
+        return blob_sizes
+
+    def _scan_bundles(self, blob_sizes: dict[str, int]) -> tuple[CachedBundle, ...]:
+        """Walk manifests directory and build CachedBundle entries."""
+        bundles: list[CachedBundle] = []
+        manifests_root = self._cache_dir / "manifests"
+        if not manifests_root.is_dir():
+            return ()
+        for host_dir in manifests_root.iterdir():
+            if not host_dir.is_dir():
+                continue
+            for ns_dir in host_dir.iterdir():
+                if not ns_dir.is_dir():
+                    continue
+                for slug_dir in ns_dir.iterdir():
+                    if not slug_dir.is_dir():
+                        continue
+                    versions = _scan_versions(slug_dir, blob_sizes)
+                    if versions:
+                        total = sum(v.size_bytes for v in versions)
+                        bundles.append(
+                            CachedBundle(
+                                namespace=ns_dir.name,
+                                slug=slug_dir.name,
+                                host=host_dir.name,
+                                versions=tuple(versions),
+                                total_size_bytes=total,
+                            )
+                        )
+        return tuple(bundles)
+
+    def _metadata_size(self) -> int:
+        """Sum file sizes under manifests/ and refs/ directories."""
+        total = 0
+        for root_name in ("manifests", "refs"):
+            root = self._cache_dir / root_name
+            if root.is_dir():
+                for f in root.rglob("*"):
+                    if f.is_file():
+                        total += f.stat().st_size
+        return total
+
     # ── Maintenance ────────────────────────────────────────────────
 
     def clean(self) -> int:
@@ -253,11 +326,11 @@ class BundleCache:
         if not manifests_root.is_dir():
             return referenced
 
-        for manifest_file in manifests_root.rglob("*.json"):
-            if manifest_file.name.endswith(".meta.json"):
+        for mf in manifests_root.rglob("*.json"):
+            if mf.name.endswith(".meta.json"):
                 continue
             try:
-                manifest = cast("dict[str, object]", json.loads(manifest_file.read_text()))
+                manifest = cast("dict[str, object]", json.loads(mf.read_text()))
                 manifest_obj = cast("dict[str, object]", manifest.get("manifest", manifest))
                 layers = cast("list[dict[str, object]]", manifest_obj.get("layers", []))
                 for layer in layers:
@@ -339,3 +412,65 @@ class BundleCache:
         except BaseException:
             tmp.unlink(missing_ok=True)
             raise
+
+
+# ── Module-level scan helpers ─────────────────────────────────────
+
+
+def _scan_versions(
+    slug_dir: Path,
+    blob_sizes: dict[str, int],
+) -> list[CachedBundleVersion]:
+    """Scan a slug directory for cached versions."""
+    versions: list[CachedBundleVersion] = []
+
+    for manifest_file in slug_dir.iterdir():
+        if not manifest_file.is_file() or manifest_file.name.endswith(".meta.json"):
+            continue
+        if not manifest_file.name.endswith(".json"):
+            continue
+
+        version = manifest_file.stem
+        fetched_at, is_fresh = _read_meta_freshness(manifest_file.with_name(f"{version}.meta.json"))
+        size_bytes = _compute_version_blob_size(manifest_file, blob_sizes)
+
+        versions.append(
+            CachedBundleVersion(
+                version=version,
+                size_bytes=size_bytes,
+                fetched_at=fetched_at,
+                is_fresh=is_fresh,
+            )
+        )
+
+    return versions
+
+
+def _read_meta_freshness(meta_file: Path) -> tuple[datetime | None, bool]:
+    """Read a .meta.json sidecar and return (fetched_at, is_fresh)."""
+    if not meta_file.is_file():
+        return None, False
+    try:
+        raw = cast("dict[str, object]", json.loads(meta_file.read_text(encoding="utf-8")))
+        fetched_at = datetime.fromisoformat(cast("str", raw["fetchedAt"]))
+        ttl = cast("int", raw.get("ttlSeconds", _DEFAULT_MANIFEST_TTL))
+        age = (datetime.now(UTC) - fetched_at).total_seconds()
+        return fetched_at, age < ttl
+    except (KeyError, ValueError, json.JSONDecodeError):
+        return None, False
+
+
+def _compute_version_blob_size(manifest_file: Path, blob_sizes: dict[str, int]) -> int:
+    """Sum the sizes of blobs referenced by a manifest file."""
+    try:
+        manifest = cast("dict[str, object]", json.loads(manifest_file.read_text(encoding="utf-8")))
+        manifest_obj = cast("dict[str, object]", manifest.get("manifest", manifest))
+        layers = cast("list[dict[str, object]]", manifest_obj.get("layers", []))
+        total = 0
+        for layer in layers:
+            sha = cast("str | None", layer.get("contentSha256"))
+            if sha and sha in blob_sizes:
+                total += blob_sizes[sha]
+        return total
+    except (json.JSONDecodeError, KeyError, TypeError):
+        return 0

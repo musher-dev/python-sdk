@@ -7,11 +7,40 @@ on:
     branches: [main]
 
 jobs:
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      devcontainer: ${{ steps.filter.outputs.devcontainer }}
+      scripts: ${{ steps.filter.outputs.scripts }}
+      compose: ${{ steps.filter.outputs.compose }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            devcontainer:
+              - '.devcontainer/devcontainer.json'
+              - '.devcontainer/compose.yaml'
+              - '.devcontainer/compose/**'
+              - '.devcontainer/config/**'
+              - '.devcontainer/scripts/**'
+              - '.devcontainer/.env.example'
+            scripts:
+              - '.devcontainer/scripts/**'
+            compose:
+              - '.devcontainer/compose.yaml'
+              - '.devcontainer/compose/**'
+              - '.devcontainer/.env.example'
+
   shellcheck:
     name: ShellCheck
+    needs: changes
+    if: needs.changes.outputs.scripts == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Run ShellCheck
         uses: ludeeus/action-shellcheck@2.0.0
         with:
@@ -20,9 +49,11 @@ jobs:
 
   compose:
     name: Compose Config
+    needs: changes
+    if: needs.changes.outputs.compose == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Validate compose config
         run: |
           cp .devcontainer/.env.example .devcontainer/.env
@@ -30,10 +61,28 @@ jobs:
 
   build:
     name: Devcontainer Build
+    needs: changes
+    if: needs.changes.outputs.devcontainer == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Build devcontainer
         uses: devcontainers/ci@v0.3
         with:
+          cacheFrom: ghcr.io/${{ github.repository }}-devcontainer
           runCmd: echo "devcontainer smoke test passed"
+
+  # Always-pass job for branch protection required checks
+  validate-status:
+    name: Validate Status
+    if: always()
+    needs: [shellcheck, compose, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check results
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
+            echo "One or more validation jobs failed"
+            exit 1
+          fi
+          echo "All validation checks passed (or were skipped due to no relevant changes)"
