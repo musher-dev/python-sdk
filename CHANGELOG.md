@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.3](https://github.com/musher-dev/python-sdk/compare/0.3.2...0.3.3) (2026-03-30)
+
+
+### Bug Fixes
+
+* resolve path traversal, cache integrity, and HTTP parsing vulnerabilities ([9f46c24](https://github.com/musher-dev/python-sdk/commit/9f46c241a906e94e47bd983aa4a42c0e4eef7e70))
+* resolve path traversal, cache integrity, and HTTP parsing vulnerabilities ([31c6c0c](https://github.com/musher-dev/python-sdk/commit/31c6c0ce635959e143e0967d0618d74758aea640))
+
 ## [0.3.2](https://github.com/musher-dev/python-sdk/compare/0.3.1...0.3.2) (2026-03-30)
 
 
