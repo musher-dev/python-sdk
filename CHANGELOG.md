@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.1](https://github.com/musher-dev/python-sdk/compare/0.3.0...0.3.1) (2026-03-30)
+
+
+### Features
+
+* add public cache management API ([4038930](https://github.com/musher-dev/python-sdk/commit/403893023d8fcce6306cf01382346565c6b7b51f))
+* add public cache management API ([c074b8a](https://github.com/musher-dev/python-sdk/commit/c074b8a35fe8275428a2c6bb4b8736a048705c4b))
+* polish repo with docs overhaul, CI matrix, and DX improvements ([95c3296](https://github.com/musher-dev/python-sdk/commit/95c3296feb7ddecec51ca9ae3809b161a22f36d3))
+* polish repo with docs overhaul, CI matrix, DX improvements, and community templates ([a07c5d4](https://github.com/musher-dev/python-sdk/commit/a07c5d4ed89b06a0d12e6b16e6719a1c808ebd30))
+
+
+### Bug Fixes
+
+* **ci:** use astral-sh/setup-uv@v5 (v8 short tag does not exist yet) ([99bc0c0](https://github.com/musher-dev/python-sdk/commit/99bc0c0c0acd548cd58e734fef928d916ee1988b))
+
 ## [0.3.0](https://github.com/musher-dev/python-sdk/compare/0.2.1...0.3.0) (2026-03-28)
 
 
