@@ -9,8 +9,8 @@ from musher import (
     MusherError,
     RateLimitError,
     RegistryError,
-    VersionNotFoundError,
 )
+from musher._errors import VersionNotFoundError
 
 
 class TestHierarchy:

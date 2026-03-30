@@ -365,6 +365,7 @@ class BundleCache:
         """Remove all cached data."""
         if self._cache_dir.is_dir():
             shutil.rmtree(self._cache_dir)
+        self._tag_written = False
 
     # ── Internal ───────────────────────────────────────────────────
 

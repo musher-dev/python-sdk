@@ -157,8 +157,8 @@ Cache management functions are available at the module level and on the `Client`
 import musher
 
 info = musher.cache_info()  # cache statistics
-musher.cache_remove("myorg/my-bundle:1.0.0")  # remove a specific bundle
-musher.cache_clean()  # remove expired entries
+musher.cache_remove("myorg/my-bundle:1.0.0")  # remove cached metadata for a bundle version
+musher.cache_clean()  # reclaim expired entries and unreferenced blobs
 musher.cache_clear()  # remove all cached data
 path = musher.cache_path()  # cache directory path
 ```

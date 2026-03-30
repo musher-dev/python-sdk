@@ -16,7 +16,9 @@ The SDK uses platform-aware directory resolution with the following precedence:
 | config | `MUSHER_CONFIG_HOME` | `~/.config/musher` | `~/Library/Application Support/musher` | `%LOCALAPPDATA%\musher\config` |
 | data | `MUSHER_DATA_HOME` | `~/.local/share/musher` | `~/Library/Application Support/musher` | `%LOCALAPPDATA%\musher\data` |
 | state | `MUSHER_STATE_HOME` | `~/.local/state/musher` | `~/Library/Application Support/musher` | `%LOCALAPPDATA%\musher\state` |
-| runtime | `MUSHER_RUNTIME_DIR` | `$XDG_RUNTIME_DIR/musher` | `~/Library/Caches/TemporaryItems/musher` | `%LOCALAPPDATA%\musher\runtime` |
+| runtime | `MUSHER_RUNTIME_DIR` | `$XDG_RUNTIME_DIR/musher` | `<tempdir>/musher/run`* | `<tempdir>\musher\run`* |
+
+\* `<tempdir>` is the system temporary directory (e.g. `/tmp` on macOS, `C:\Users\<user>\AppData\Local\Temp` on Windows).
 
 On Windows, the SDK uses a flat layout under `%LOCALAPPDATA%\musher\` with category subdirectories rather than relying on `platformdirs`, which maps some categories to the same physical path.
 

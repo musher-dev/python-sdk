@@ -238,6 +238,18 @@ class TestClear:
         cache = BundleCache(cache_dir=tmp_path / "nonexistent")
         cache.clear()  # should not raise
 
+    def test_clear_then_write_recreates_cachedir_tag(self, tmp_path: Path):
+        cache = BundleCache(cache_dir=tmp_path)
+        cache.put_blob("ab" * 32, b"data")
+        tag = tmp_path / "CACHEDIR.TAG"
+        assert tag.is_file()
+        cache.clear()
+        assert not tag.exists()
+        # Write again on the same instance — tag must be recreated
+        cache.put_blob("cd" * 32, b"data2")
+        assert tag.is_file()
+        assert tag.read_text().startswith("Signature: 8a477f597d28d172789f06886806bc55")
+
 
 class TestBlobOverwrite:
     def test_blob_overwrite_succeeds(self, tmp_path: Path):

@@ -145,6 +145,48 @@ class TestSkillHandle:
         assert result.is_file()
 
 
+class TestSkillHandlePathTraversal:
+    """Verify that path traversal attempts are rejected in all export methods."""
+
+    def _make_malicious_skill(self) -> SkillHandle:
+        files = {
+            "SKILL.md": FileHandle(logical_path="skills/evil/SKILL.md", _content=b"# Evil"),
+            "../../etc/passwd": FileHandle(
+                logical_path="skills/evil/../../etc/passwd", _content=b"root:x:0:0"
+            ),
+        }
+        return SkillHandle(
+            name="evil",
+            description="Malicious skill",
+            root_path="skills/evil",
+            _files=files,
+        )
+
+    def test_export_path_rejects_traversal(self, tmp_path):
+        skill = self._make_malicious_skill()
+        with pytest.raises(ValueError, match="Unsafe relative path"):
+            skill.export_path(dest=tmp_path)
+
+    def test_export_zip_rejects_traversal(self, tmp_path):
+        skill = self._make_malicious_skill()
+        with pytest.raises(ValueError, match="Unsafe relative path"):
+            skill.export_zip(dest=tmp_path)
+
+    def test_export_openai_inline_rejects_traversal(self):
+        skill = self._make_malicious_skill()
+        with pytest.raises(ValueError, match="Unsafe relative path"):
+            skill.export_openai_inline_skill()
+
+    def test_absolute_path_rejected(self, tmp_path):
+        files = {
+            "SKILL.md": FileHandle(logical_path="skills/x/SKILL.md", _content=b"# X"),
+            "/etc/passwd": FileHandle(logical_path="/etc/passwd", _content=b"root"),
+        }
+        skill = SkillHandle(name="x", description="X", root_path="skills/x", _files=files)
+        with pytest.raises(ValueError, match="Unsafe relative path"):
+            skill.export_path(dest=tmp_path)
+
+
 class TestPromptHandle:
     def test_text_delegates(self):
         fh = FileHandle(logical_path="prompts/main.txt", _content=b"Be helpful.")
