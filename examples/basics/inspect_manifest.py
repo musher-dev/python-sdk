@@ -2,10 +2,7 @@
 
 import musher
 
-# NOTE: Bundle references below (e.g. "acme/agent-toolkit:2.0.0") are
-# placeholders. Replace with a real bundle ref from your Musher registry.
-
-result = musher.resolve("acme/agent-toolkit:2.0.0")
+result = musher.resolve("musher-examples/agent-toolkit:2.0.0")
 
 print(f"Bundle: {result.ref} v{result.version}")
 print(f"State: {result.state}")

@@ -13,13 +13,10 @@ from claude_agent_sdk import ClaudeAgentOptions, query
 
 import musher
 
-# NOTE: Bundle references below (e.g. "acme/engineering-workflows:2.0.0") are
-# placeholders. Replace with a real bundle ref from your Musher registry.
-
 # Credentials auto-discovered from MUSHER_API_KEY env var, keyring,
 # or credential file. To override: musher.configure(token="your-token")
 
-bundle = musher.pull("acme/engineering-workflows:2.0.0")
+bundle = musher.pull("musher-examples/code-review-kit:1.2.0")
 
 # Install specific skills to the project-level Claude skills directory.
 # clean=True removes stale Musher-managed skill installs for this bundle

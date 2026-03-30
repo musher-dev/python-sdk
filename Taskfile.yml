@@ -19,6 +19,12 @@ tasks:
       - task: check:types
       - task: check:test
 
+  check:fix:
+    desc: Auto-fix lint issues and format
+    cmds:
+      - uv run ruff check --fix .
+      - uv run ruff format .
+
   check:format:
     desc: Format code with ruff
     cmds:

@@ -11,9 +11,6 @@ from pydantic_ai import Agent
 
 import musher
 
-# NOTE: Bundle references below (e.g. "acme/prompt-library:1.2.0") are
-# placeholders. Replace with a real bundle ref from your Musher registry.
-
 # Credentials auto-discovered from MUSHER_API_KEY env var, keyring,
 # or credential file. To override: musher.configure(token="your-token")
 
@@ -27,7 +24,7 @@ class IncidentSummary(BaseModel):
     action_items: list[str]
 
 
-bundle = musher.pull("acme/prompt-library:1.2.0")
+bundle = musher.pull("musher-examples/prompt-library:1.2.0")
 instructions_text = bundle.prompt("system").text()
 
 # The agent returns an IncidentSummary instead of free-form text

@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 from musher._auth import resolve_registry_url
 from musher._bundle import Asset, Bundle, Manifest, ManifestAsset, ResolveResult
-from musher._cache import BundleCache
+from musher._cache import BundleCache  # internal; not re-exported in __all__
 from musher._cache_info import CachedBundle, CachedBundleVersion, CacheInfo
 from musher._client import AsyncClient, Client
 from musher._config import MusherConfig, configure, get_config

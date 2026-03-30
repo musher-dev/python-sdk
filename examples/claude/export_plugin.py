@@ -13,20 +13,17 @@ from claude_agent_sdk import ClaudeAgentOptions, query
 
 import musher
 
-# NOTE: Bundle references below (e.g. "acme/engineering-workflows:2.0.0") are
-# placeholders. Replace with a real bundle ref from your Musher registry.
-
 # Credentials auto-discovered from MUSHER_API_KEY env var, keyring,
 # or credential file. To override: musher.configure(token="your-token")
 
-bundle = musher.pull("acme/engineering-workflows:2.0.0")
+bundle = musher.pull("musher-examples/code-review-kit:1.2.0")
 
 # Select only the skills needed for this session
 selection = bundle.select(skills=["researching-repos", "drafting-release-notes"])
 
 # Export as a local Claude plugin with a namespaced plugin name.
-# Skills will be accessible as "team-workflows:researching-repos", etc.
-plugin = selection.export_claude_plugin("team-workflows", dest=Path("./plugins"))
+# Skills will be accessible as "code-review:researching-repos", etc.
+plugin = selection.export_claude_plugin("code-review", dest=Path("./plugins"))
 print(f"Plugin exported to: {plugin.path}")
 
 # Verify only the selected skills are present
