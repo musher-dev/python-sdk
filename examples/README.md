@@ -1,5 +1,7 @@
 # Musher SDK Examples
 
+> Part of the [Musher Python SDK](../README.md).
+
 Examples for the Musher Python SDK, organized by use case.
 
 ## Prerequisites
@@ -38,10 +40,18 @@ Credentials are auto-discovered in this order:
 
 To override explicitly in code: `musher.configure(token="your-token")`.
 
-## Running
+## Bundles
 
-Replace placeholder bundle references (e.g. `"acme/prompt-library:1.2.0"`) with
-real ones from your Musher registry, then:
+Examples use published bundles from [hub.musher.dev](https://hub.musher.dev/):
+
+| Bundle | Version | Used by |
+|--------|---------|---------|
+| `musher-examples/agent-toolkit` | 2.0.0 | `basics/pull_bundle.py`, `basics/inspect_manifest.py` |
+| `musher-examples/prompt-library` | 1.2.0 | `basics/bundle_resources.py`, `pydantic_ai/*` |
+| `musher-examples/code-review-kit` | 1.2.0 | `claude/*`, `openai/local_shell_skill.py` |
+| `musher-examples/data-workflows` | 1.0.0 | `openai/hosted_inline_skill.py` |
+
+## Running
 
 ```bash
 uv run python examples/openai/hosted_inline_skill.py
@@ -61,7 +71,3 @@ uv run python examples/openai/hosted_inline_skill.py
 | `pydantic_ai/instructions_from_bundle.py` | Use bundle prompts as PydanticAI agent instructions | `pydantic-ai` | Working |
 | `pydantic_ai/structured_output.py` | Structured output with bundle-managed prompts | `pydantic-ai` | Working |
 | `pydantic_ai/dynamic_instructions.py` | Dynamic instructions and tools from bundles | `pydantic-ai` | Working |
-
-All examples use implemented SDK methods. Bundle references (e.g.
-`"acme/prompt-library:1.2.0"`) are placeholders — replace them with a real
-bundle ref from your Musher registry before running.

@@ -9,15 +9,12 @@ from agents import Agent, Runner, ShellTool
 
 import musher
 
-# NOTE: Bundle references below (e.g. "acme/data-workflows:2.0.0") are
-# placeholders. Replace with a real bundle ref from your Musher registry.
-
 # Credentials auto-discovered from MUSHER_API_KEY env var, keyring,
 # or credential file. To override: musher.configure(token="your-token")
 
 
 async def main() -> None:
-    bundle = musher.pull("acme/data-workflows:2.0.0")
+    bundle = musher.pull("musher-examples/data-workflows:1.0.0")
     skill = bundle.skill("csv-insights")
     inline = skill.export_openai_inline_skill()
 

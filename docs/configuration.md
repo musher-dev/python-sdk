@@ -32,8 +32,7 @@ On Windows, the SDK uses a flat layout under `%LOCALAPPDATA%\musher\` with categ
 
 | Variable | Purpose |
 |---|---|
-| `MUSHER_API_URL` | Registry URL (checked first) |
-| `MUSHER_BASE_URL` | Registry URL alias |
+| `MUSHER_API_URL` | Registry URL |
 
 Default: `https://api.musher.dev`
 
@@ -46,21 +45,8 @@ The SDK resolves credentials in this order, stopping at the first match:
 1. **Environment variables** — `MUSHER_API_KEY`
 2. **OS keyring** — service `musher/{hostname}`, username `api-key`
    - Hostname is derived from the registry URL (e.g. `musher/api.musher.dev`)
-3. **Profile config file** — `<config_dir>/config.toml`
-   - Format: `[profile.<name>] api_key = "..."`
-   - Default profile: `"default"`
-4. **File fallback** — `<config_dir>/api-key`
+3. **File fallback** — `<data_dir>/credentials/<host_id>/api-key`
    - Must have `0600` permissions (owner-only); rejected otherwise
-
-### Profile Config Format
-
-```toml
-[profile.default]
-api_key = "mush_prod_..."
-
-[profile.staging]
-api_key = "mush_staging_..."
-```
 
 ## Cache Structure
 
@@ -93,14 +79,13 @@ $cache_root/
 
 ```python
 import musher
+from pathlib import Path
 
 musher.configure(
     token="...",  # explicit token
-    api_key="...",  # alias for token
     registry_url="https://...",  # explicit registry URL
-    api_url="https://...",  # alias for registry_url
     cache_dir=Path("..."),  # override cache directory
 )
 ```
 
-When neither `token` nor `api_key` is provided, the credential chain is used automatically. When neither `registry_url` nor `api_url` is provided, the URL env var chain is checked.
+When `token` is not provided, the credential chain is used automatically. When `registry_url` is not provided, the URL env var chain is checked.

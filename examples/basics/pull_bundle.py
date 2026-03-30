@@ -2,22 +2,19 @@
 
 import musher
 
-# NOTE: Bundle references below (e.g. "acme/agent-toolkit:2.0.0") are
-# placeholders. Replace with a real bundle ref from your Musher registry.
-
 # Credentials auto-discovered from MUSHER_API_KEY env var, keyring,
 # or credential file. To override: musher.configure(token="your-token")
 
-bundle = musher.pull("acme/agent-toolkit:2.0.0")
+bundle = musher.pull("musher-examples/agent-toolkit:2.0.0")
 
 # List all files
 for fh in bundle.files():
     print(f"{fh.logical_path} ({fh.media_type or 'unknown'})")
 
 # Get a specific file
-prompt = bundle.file("prompts/main.txt")
+prompt = bundle.file("prompts/system.md")
 if prompt:
-    print(f"Prompt content: {prompt.text()}")
+    print(f"System prompt: {prompt.text()[:120]}...")
 
 # For reproducible deployments, pass a digest ref instead of a version tag:
-#   "acme/agent-toolkit@sha256:abc123def456"
+#   "musher-examples/agent-toolkit@sha256:abc123def456"

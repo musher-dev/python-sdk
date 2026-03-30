@@ -18,9 +18,6 @@ from agents import (
 
 import musher
 
-# NOTE: Bundle references below (e.g. "acme/engineering-workflows:2.0.0") are
-# placeholders. Replace with a real bundle ref from your Musher registry.
-
 # Credentials auto-discovered from MUSHER_API_KEY env var, keyring,
 # or credential file. To override: musher.configure(token="your-token")
 
@@ -65,12 +62,12 @@ class RepoShell:
 
 
 async def main() -> None:
-    bundle = musher.pull("acme/engineering-workflows:2.0.0")
-    skill = bundle.skill("repo-maintainer")
+    bundle = musher.pull("musher-examples/code-review-kit:1.2.0")
+    skill = bundle.skill("researching-repos")
     local = skill.export_openai_local_skill(dest=PROJECT_DIR / ".musher" / "openai" / "skills")
 
     agent = Agent(
-        name="Repo Triage Assistant",
+        name="Repo Research Assistant",
         model="gpt-4.1",
         instructions="Use the local skill when it helps. Keep the answer concise and actionable.",
         tools=[
@@ -83,7 +80,7 @@ async def main() -> None:
 
     result = await Runner.run(
         agent,
-        "Use the repo-maintainer skill to inspect this repository and tell me the first onboarding issue I should fix.",
+        "Use the researching-repos skill to explore this repository and summarize its tech stack, structure, and conventions.",
     )
     print(result.final_output)
 
