@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.2](https://github.com/musher-dev/python-sdk/compare/0.3.1...0.3.2) (2026-03-30)
+
+
+### Bug Fixes
+
+* sync pyproject.toml version with release-please and use inline marker ([e821dc3](https://github.com/musher-dev/python-sdk/commit/e821dc35b7b6f4cc6cf99d24fdd741fbd221ca3a))
+* sync pyproject.toml version with release-please and use inline marker ([e4f729b](https://github.com/musher-dev/python-sdk/commit/e4f729b4bd3426114b087ac38be9973e6b5c4075))
+
 ## [0.3.1](https://github.com/musher-dev/python-sdk/compare/0.3.0...0.3.1) (2026-03-30)
 
 
