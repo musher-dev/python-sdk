@@ -1439,7 +1439,7 @@ wheels = [
 
 [[package]]
 name = "musher-sdk"
-version = "0.2.0"
+version = "0.3.1"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },
@@ -1482,8 +1482,8 @@ provides-extras = ["examples"]
 [package.metadata.requires-dev]
 dev = [
     { name = "basedpyright", specifier = ">=1.38.1" },
-    { name = "nodejs-wheel", specifier = ">=22,<24" },
-    { name = "pytest", specifier = ">=8.3.0,<9.0.0" },
+    { name = "nodejs-wheel", specifier = ">=22,<25" },
+    { name = "pytest", specifier = ">=8.3.0,<10.0.0" },
     { name = "pytest-asyncio", specifier = ">=1.0.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
     { name = "pytest-xdist", specifier = ">=3.0" },
