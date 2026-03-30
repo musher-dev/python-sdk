@@ -189,6 +189,10 @@ class AsyncClient:
         for layer in result.manifest.layers:
             cached_blob = self._cache.get_blob(layer.content_sha256)
             if cached_blob is not None:
+                if self._config.verify_checksums:
+                    actual_sha = hashlib.sha256(cached_blob).hexdigest()
+                    if actual_sha != layer.content_sha256:
+                        raise IntegrityError(expected=layer.content_sha256, actual=actual_sha)
                 assets[layer.logical_path] = Asset(
                     asset_id=layer.asset_id,
                     logical_path=layer.logical_path,
@@ -233,14 +237,13 @@ class AsyncClient:
             content = str(item.get("contentText", "")).encode()
             layer = layer_map.get(logical_path)
 
-            # Verify checksum against the resolve manifest
-            if layer and self._config.verify_checksums:
-                actual_sha = hashlib.sha256(content).hexdigest()
-                if actual_sha != layer.content_sha256:
-                    raise IntegrityError(expected=layer.content_sha256, actual=actual_sha)
+            # Always compute actual hash — never cache under an unverified claimed hash
+            actual_sha = hashlib.sha256(content).hexdigest()
 
-            content_sha256 = layer.content_sha256 if layer else hashlib.sha256(content).hexdigest()
-            self._cache.put_blob(content_sha256, content)
+            if layer and self._config.verify_checksums and actual_sha != layer.content_sha256:
+                raise IntegrityError(expected=layer.content_sha256, actual=actual_sha)
+
+            self._cache.put_blob(actual_sha, content)
 
             media_type = str(item.get("mediaType") or "") or (layer.media_type if layer else None)
             assets[logical_path] = Asset(
@@ -248,10 +251,19 @@ class AsyncClient:
                 logical_path=logical_path,
                 asset_type=AssetType(str(item["assetType"])),
                 content=content,
-                content_sha256=content_sha256,
+                content_sha256=actual_sha,
                 size_bytes=layer.size_bytes if layer else len(content),
                 media_type=media_type or None,
             )
+
+        # Enforce manifest completeness — all expected layers must be present
+        missing = set(layer_map.keys()) - set(assets.keys())
+        if missing:
+            raise IntegrityError(
+                expected=f"all {len(layer_map)} manifest layers",
+                actual=f"missing {len(missing)} layers: {', '.join(sorted(missing))}",
+            )
+
         return assets
 
     async def _pull_version(self, namespace: str, slug: str, version: str) -> dict[str, object]:

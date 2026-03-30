@@ -8,10 +8,18 @@ import json
 import tempfile
 import zipfile
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import cast
 
 from musher._export import ClaudePluginExport, OpenAIInlineSkill, OpenAILocalSkill
+
+
+def _validate_relative_path(relative_path: str) -> None:
+    """Reject paths that could escape the target directory."""
+    p = PurePosixPath(relative_path)
+    if p.is_absolute() or ".." in p.parts:
+        msg = f"Unsafe relative path in skill: {relative_path}"
+        raise ValueError(msg)
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,6 +74,7 @@ class SkillHandle:
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
             for relative_path, fh in self._files.items():
+                _validate_relative_path(relative_path)
                 zf.writestr(f"{self.name}/{relative_path}", fh.bytes())
         content_b64 = base64.b64encode(buf.getvalue()).decode("ascii")
         return OpenAIInlineSkill(
@@ -81,6 +90,7 @@ class SkillHandle:
 
         skill_dir = dest / self.name
         for relative_path, fh in self._files.items():
+            _validate_relative_path(relative_path)
             out = skill_dir / relative_path
             out.parent.mkdir(parents=True, exist_ok=True)
             _ = out.write_bytes(fh.bytes())
@@ -95,6 +105,7 @@ class SkillHandle:
         zip_path = dest / f"{self.name}.zip"
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
             for relative_path, fh in self._files.items():
+                _validate_relative_path(relative_path)
                 zf.writestr(f"{self.name}/{relative_path}", fh.bytes())
         return zip_path
 

@@ -102,6 +102,42 @@ class TestErrorMapping:
             await transport.get("/v1/test")
         assert exc_info.value.status == 500
 
+    @respx.mock
+    async def test_429_with_http_date_retry_after(self, transport: HTTPTransport):
+        respx.get("https://api.test.dev/v1/test").mock(
+            return_value=httpx.Response(
+                429,
+                headers={"Retry-After": "Mon, 30 Mar 2026 12:00:00 GMT"},
+                text="Too Many Requests",
+            )
+        )
+        with pytest.raises(RateLimitError) as exc_info:
+            await transport.get("/v1/test")
+        assert exc_info.value.retry_after is not None
+        assert isinstance(exc_info.value.retry_after, float)
+
+    @respx.mock
+    async def test_429_with_invalid_retry_after(self, transport: HTTPTransport):
+        respx.get("https://api.test.dev/v1/test").mock(
+            return_value=httpx.Response(
+                429,
+                headers={"Retry-After": "not-a-date-or-number"},
+                text="Too Many Requests",
+            )
+        )
+        with pytest.raises(RateLimitError) as exc_info:
+            await transport.get("/v1/test")
+        assert exc_info.value.retry_after is None
+
+    @respx.mock
+    async def test_429_without_retry_after(self, transport: HTTPTransport):
+        respx.get("https://api.test.dev/v1/test").mock(
+            return_value=httpx.Response(429, text="Too Many Requests")
+        )
+        with pytest.raises(RateLimitError) as exc_info:
+            await transport.get("/v1/test")
+        assert exc_info.value.retry_after is None
+
 
 class TestClose:
     @respx.mock

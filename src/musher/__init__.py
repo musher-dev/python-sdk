@@ -23,7 +23,6 @@ from musher._errors import (
     MusherError,
     RateLimitError,
     RegistryError,
-    VersionNotFoundError,
 )
 from musher._export import ClaudePluginExport, OpenAIInlineSkill, OpenAILocalSkill
 from musher._handles import (
@@ -81,7 +80,6 @@ __all__ = [
     "ResolveResult",
     "SkillHandle",
     "ToolsetHandle",
-    "VersionNotFoundError",
     "__version__",
     "cache_clean",
     "cache_clear",

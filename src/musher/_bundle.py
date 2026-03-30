@@ -138,6 +138,8 @@ def _place_skill_file(
         candidate_root = str(PurePosixPath(*parts[:i]))
         if f"{candidate_root}/SKILL.md" in assets:
             rel = str(PurePosixPath(*parts[i:]))
+            if ".." in PurePosixPath(rel).parts:
+                return
             skill_roots.setdefault(candidate_root, {})[rel] = file_handles[asset.logical_path]
             return
     # Top-level skill file without nested directory

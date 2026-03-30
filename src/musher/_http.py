@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 from typing import TYPE_CHECKING
 
 import httpx
@@ -63,6 +65,19 @@ class HTTPTransport:
             self._client = None
 
 
+def _parse_retry_after(header: str) -> float | None:
+    """Parse Retry-After as delay-seconds or HTTP-date (RFC 9110)."""
+    try:
+        return float(header)
+    except ValueError:
+        pass
+    try:
+        dt = parsedate_to_datetime(header)
+        return max(0.0, (dt - datetime.now(tz=UTC)).total_seconds())
+    except (ValueError, TypeError):
+        return None
+
+
 def _raise_for_status(response: httpx.Response) -> None:
     """Map HTTP error responses to SDK exceptions."""
     if response.is_success:
@@ -78,7 +93,9 @@ def _raise_for_status(response: httpx.Response) -> None:
 
     if status == 429:  # noqa: PLR2004
         retry_after_header: str | None = response.headers.get("Retry-After")  # pyright: ignore[reportAny]
-        raise RateLimitError(retry_after=float(retry_after_header) if retry_after_header else None)
+        raise RateLimitError(
+            retry_after=_parse_retry_after(retry_after_header) if retry_after_header else None
+        )
 
     # Try RFC 9457 Problem Details
     try:
