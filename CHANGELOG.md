@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.4](https://github.com/musher-dev/python-sdk/compare/0.3.3...0.3.4) (2026-03-31)
+
+
+### Bug Fixes
+
+* use API detail message in BundleNotFoundError instead of raw URL ([05a6540](https://github.com/musher-dev/python-sdk/commit/05a6540453ffeba321bf8ba9a0f74c2212fe4106))
+* use API detail message in BundleNotFoundError instead of raw URL ([deebdc8](https://github.com/musher-dev/python-sdk/commit/deebdc8835c3ce47dd2734bebcd099f7f75db595))
+
 ## [0.3.3](https://github.com/musher-dev/python-sdk/compare/0.3.2...0.3.3) (2026-03-30)
 
 
