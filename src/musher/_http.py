@@ -89,7 +89,12 @@ def _raise_for_status(response: httpx.Response) -> None:
         raise AuthenticationError("Invalid or missing API token")
 
     if status == 404:  # noqa: PLR2004
-        raise BundleNotFoundError(str(response.url))
+        try:
+            body_404: dict[str, object] = response.json()  # pyright: ignore[reportAny]
+            detail_404 = str(body_404.get("detail", ""))
+        except (ValueError, KeyError):
+            detail_404 = ""
+        raise BundleNotFoundError(detail_404 or str(response.url))
 
     if status == 429:  # noqa: PLR2004
         retry_after_header: str | None = response.headers.get("Retry-After")  # pyright: ignore[reportAny]

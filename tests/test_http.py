@@ -65,6 +65,22 @@ class TestErrorMapping:
             await transport.get("/v1/test")
 
     @respx.mock
+    async def test_404_with_json_body_uses_detail(self, transport: HTTPTransport):
+        respx.get("https://api.test.dev/v1/test").mock(
+            return_value=httpx.Response(
+                404,
+                json={
+                    "type": "https://api.platform.musher.dev/errors/not-found",
+                    "title": "Resource Not Found",
+                    "status": 404,
+                    "detail": "Bundle version with identifier '1.0.0' not found",
+                },
+            )
+        )
+        with pytest.raises(BundleNotFoundError, match="Bundle version with identifier"):
+            await transport.get("/v1/test")
+
+    @respx.mock
     async def test_429_raises_rate_limit_with_retry_after(self, transport: HTTPTransport):
         respx.get("https://api.test.dev/v1/test").mock(
             return_value=httpx.Response(
