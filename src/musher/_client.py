@@ -16,7 +16,7 @@ from musher._bundle import (
 )
 from musher._cache import BundleCache
 from musher._config import MusherConfig, get_config
-from musher._errors import APIError, IntegrityError
+from musher._errors import APIError, AuthenticationError, IntegrityError
 from musher._http import HTTPTransport
 from musher._types import AssetType, BundleRef
 
@@ -102,10 +102,23 @@ class AsyncClient:
         if parsed.digest:
             params["digest"] = parsed.digest
 
-        response = await self._http.get(
-            f"/v1/namespaces/{parsed.namespace}/bundles/{parsed.slug}:resolve",
-            params=params or None,
-        )
+        try:
+            response = await self._http.get(
+                f"/v1/namespaces/{parsed.namespace}/bundles/{parsed.slug}:resolve",
+                params=params or None,
+            )
+        except AuthenticationError:
+            response = await self._http.get(
+                f"/v1/hub/bundles/{parsed.namespace}/{parsed.slug}:resolve",
+                params=params or None,
+            )
+        except APIError as exc:
+            if exc.status != 403:  # noqa: PLR2004
+                raise
+            response = await self._http.get(
+                f"/v1/hub/bundles/{parsed.namespace}/{parsed.slug}:resolve",
+                params=params or None,
+            )
         response_data: dict[str, object] = response.json()  # pyright: ignore[reportAny]
         result = ResolveResult.model_validate(response_data)
 
@@ -277,6 +290,8 @@ class AsyncClient:
                 f"/v1/namespaces/{namespace}/bundles/{slug}/versions/{version}:pull",
             )
             return response.json()  # pyright: ignore[reportAny]
+        except AuthenticationError:
+            pass  # No token or invalid — try public hub endpoint
         except APIError as exc:
             if exc.status != 403:  # noqa: PLR2004
                 raise

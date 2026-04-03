@@ -253,6 +253,62 @@ class TestAsyncClient:
         assert bundle.version == "1.0.0"
         assert len(bundle.files()) == 1
 
+    @respx.mock
+    async def test_pull_hub_fallback_401(self, config: MusherConfig):
+        """When namespaced :pull returns 401, falls back to hub :pull."""
+        respx.get(f"{_BASE}/v1/namespaces/myorg/bundles/my-bundle:resolve").mock(
+            return_value=httpx.Response(200, json=_RESOLVE_RESPONSE)
+        )
+        # Namespaced :pull returns 401 (no API key)
+        respx.get(f"{_BASE}/v1/namespaces/myorg/bundles/my-bundle/versions/1.0.0:pull").mock(
+            return_value=httpx.Response(401, json={"detail": "Invalid or missing API token"})
+        )
+        # Hub :pull succeeds
+        respx.get(f"{_BASE}/v1/hub/bundles/myorg/my-bundle/versions/1.0.0:pull").mock(
+            return_value=httpx.Response(200, json=_PULL_RESPONSE)
+        )
+        async with AsyncClient(config=config) as client:
+            bundle = await client.pull("myorg/my-bundle:1.0.0")
+        assert isinstance(bundle, Bundle)
+        assert bundle.version == "1.0.0"
+        assert len(bundle.files()) == 1
+
+    @respx.mock
+    async def test_resolve_hub_fallback_401(self, config: MusherConfig):
+        """When namespaced :resolve returns 401, falls back to hub :resolve."""
+        respx.get(f"{_BASE}/v1/namespaces/myorg/bundles/my-bundle:resolve").mock(
+            return_value=httpx.Response(401, json={"detail": "Invalid or missing API token"})
+        )
+        respx.get(f"{_BASE}/v1/hub/bundles/myorg/my-bundle:resolve").mock(
+            return_value=httpx.Response(200, json=_RESOLVE_RESPONSE)
+        )
+        async with AsyncClient(config=config) as client:
+            result = await client.resolve("myorg/my-bundle:1.0.0")
+        assert isinstance(result, ResolveResult)
+        assert result.version == "1.0.0"
+
+    @respx.mock
+    async def test_resolve_hub_fallback_403(self, config: MusherConfig):
+        """When namespaced :resolve returns 403, falls back to hub :resolve."""
+        respx.get(f"{_BASE}/v1/namespaces/myorg/bundles/my-bundle:resolve").mock(
+            return_value=httpx.Response(
+                403,
+                json={
+                    "type": "https://api.platform.musher.dev/errors/forbidden",
+                    "title": "Forbidden",
+                    "status": 403,
+                    "detail": "Not authorized",
+                },
+            )
+        )
+        respx.get(f"{_BASE}/v1/hub/bundles/myorg/my-bundle:resolve").mock(
+            return_value=httpx.Response(200, json=_RESOLVE_RESPONSE)
+        )
+        async with AsyncClient(config=config) as client:
+            result = await client.resolve("myorg/my-bundle:1.0.0")
+        assert isinstance(result, ResolveResult)
+        assert result.version == "1.0.0"
+
 
 class TestClient:
     def test_instantiation(self, config: MusherConfig):
