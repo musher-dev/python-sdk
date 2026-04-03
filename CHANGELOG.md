@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.5](https://github.com/musher-dev/python-sdk/compare/0.3.4...0.3.5) (2026-04-03)
+
+
+### Bug Fixes
+
+* fall back to hub endpoints on 401 for public bundles ([4371deb](https://github.com/musher-dev/python-sdk/commit/4371debaad1964fb0d511dbdf90e766ae1654069))
+* fall back to hub endpoints on 401 for public bundles ([b75bba0](https://github.com/musher-dev/python-sdk/commit/b75bba08f699ac17108b70bd892811ce32bd9213)), closes [#22](https://github.com/musher-dev/python-sdk/issues/22)
+
 ## [0.3.4](https://github.com/musher-dev/python-sdk/compare/0.3.3...0.3.4) (2026-03-31)
 
 

@@ -1,6 +1,6 @@
 [project]
 name = "musher-sdk"
-version = "0.3.4" # x-release-please-version
+version = "0.3.5" # x-release-please-version
 description = "Python SDK for the Musher bundle distribution platform"
 readme = "README.md"
 license = "Apache-2.0"
