@@ -16,17 +16,16 @@ jobs:
       compose: ${{ steps.filter.outputs.compose }}
     steps:
       - uses: actions/checkout@v6
-      - uses: dorny/paths-filter@v4
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
+          # devcontainer: what the dev container is built from (everything
+          # under .devcontainer/) and this workflow, which holds the job that
+          # builds it, so a change to that job runs it too.
           filters: |
             devcontainer:
-              - '.devcontainer/devcontainer.json'
-              - '.devcontainer/compose.yaml'
-              - '.devcontainer/compose/**'
-              - '.devcontainer/config/**'
-              - '.devcontainer/scripts/**'
-              - '.devcontainer/.env.example'
+              - '.devcontainer/**'
+              - '.github/workflows/validate.yaml'
             scripts:
               - '.devcontainer/scripts/**'
             compose:
@@ -67,22 +66,28 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Build devcontainer
-        uses: devcontainers/ci@v0.3
+        uses: devcontainers/ci@513af61f4de4f75d37e4438f184ba4358f0fc1ca # v0.3.1900000450
         with:
           cacheFrom: ghcr.io/${{ github.repository }}-devcontainer
-          runCmd: echo "devcontainer smoke test passed"
+          # Runs after post-create, inside the container: the SDK imports
+          # from the environment post-create's `uv sync` built.
+          runCmd: .venv/bin/python -c 'import musher'
 
-  # Always-pass job for branch protection required checks
+  # Always-pass job for branch protection required checks. It waits on
+  # changes too: when that job fails, every job that needs it is skipped, and
+  # a scope nobody decided must not read as nothing to check.
   validate-status:
     name: Validate Status
     if: always()
-    needs: [shellcheck, compose, build]
+    needs: [changes, shellcheck, compose, build]
     runs-on: ubuntu-latest
     steps:
       - name: Check results
+        env:
+          FAILED: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
         run: |
-          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
-            echo "One or more validation jobs failed"
+          if [[ "$FAILED" == "true" ]]; then
+            echo "One or more validation jobs failed or were cancelled"
             exit 1
           fi
           echo "All validation checks passed (or were skipped due to no relevant changes)"
