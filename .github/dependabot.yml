@@ -1,19 +1,36 @@
+# Version updates are quiet (engineering-conventions DEPS-17): monthly, every
+# dependency in one group, each release seven days old, so each ecosystem
+# opens at most one pull request a month. Security updates skip the schedule
+# and the cooldown and open as soon as an advisory does, in the `-security`
+# group.
 version: 2
 updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
+    cooldown:
+      default-days: 7
     groups:
       github-actions:
+        patterns:
+          - "*"
+      github-actions-security:
+        applies-to: "security-updates"
         patterns:
           - "*"
 
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
+    cooldown:
+      default-days: 7
     groups:
       python-deps:
+        patterns:
+          - "*"
+      pip-security:
+        applies-to: "security-updates"
         patterns:
           - "*"
