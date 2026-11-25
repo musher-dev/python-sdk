@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.6](https://github.com/musher-dev/python-sdk/compare/0.3.5...0.3.6) (2026-11-25)
+
+
+### Bug Fixes
+
+* keep config and other files when select() has no filters ([#37](https://github.com/musher-dev/python-sdk/issues/37)) ([3b34f61](https://github.com/musher-dev/python-sdk/commit/3b34f61cbbf57075f207ce1d6d36698a054d692f)), closes [#19](https://github.com/musher-dev/python-sdk/issues/19)
+
 ## [0.3.5](https://github.com/musher-dev/python-sdk/compare/0.3.4...0.3.5) (2026-04-03)
 
 
