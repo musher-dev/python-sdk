@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.13"
 
 [[package]]
@@ -1439,7 +1439,7 @@ wheels = [
 
 [[package]]
 name = "musher-sdk"
-version = "0.3.3"
+version = "0.3.5"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },

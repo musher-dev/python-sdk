@@ -170,7 +170,7 @@ path = musher.cache_path()  # cache directory path
 - `fetch_asset()` — fetch individual assets by logical path
 - Sync (`Client`) and async (`AsyncClient`) clients
 - Typed handles: `SkillHandle`, `PromptHandle`, `ToolsetHandle`, `AgentSpecHandle`
-- `bundle.select()` — filter resources by type
+- `bundle.select()` — filter resources by type; with no filters it selects the whole bundle, `config` and `other` files included
 - Content-addressable cache with TTL and garbage collection
 - Cache management: `cache_info()`, `cache_remove()`, `cache_clear()`, `cache_clean()`, `cache_path()`
 - `export_claude_plugin()` / `install_claude_skills()` — Claude integration

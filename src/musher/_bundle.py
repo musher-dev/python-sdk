@@ -258,8 +258,15 @@ class Bundle:
         toolsets: list[str] | None = None,
         agent_specs: list[str] | None = None,
     ) -> BundleSelection:
-        """Return a filtered subset of this bundle's resources."""
+        """Return a filtered subset of this bundle's resources.
+
+        With no filter, the selection is the whole bundle: its ``files()`` are
+        every file, ``config`` and ``other`` assets included. With any filter,
+        they are the files of the selected skills, prompts, toolsets and agent
+        specs.
+        """
         self._build_handles()
+        assert self._file_handles is not None  # noqa: S101
         assert self._skill_handles is not None  # noqa: S101
         assert self._prompt_handles is not None  # noqa: S101
         assert self._toolset_handles is not None  # noqa: S101
@@ -270,8 +277,10 @@ class Bundle:
         sel_toolsets = _filter_map(self._toolset_handles, toolsets)
         sel_agent_specs = _filter_map(self._agent_spec_handles, agent_specs)
 
-        # Collect files belonging to selected resources
-        sel_files: dict[str, FileHandle] = {}
+        # No filter selects everything, untyped files included; a filter selects
+        # the files of the resources it names.
+        unfiltered = all(f is None for f in (skills, prompts, toolsets, agent_specs))
+        sel_files: dict[str, FileHandle] = dict(self._file_handles) if unfiltered else {}
         for sh in sel_skills.values():
             for fh in sh.files():
                 sel_files[fh.logical_path] = fh

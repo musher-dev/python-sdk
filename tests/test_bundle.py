@@ -20,9 +20,9 @@ def _make_resolve() -> ResolveResult:
     })
 
 
-def _make_bundle_with_typed_assets() -> Bundle:
-    """Create a bundle with assets of various types for handle testing."""
-    assets: dict[str, Asset] = {}
+def _make_bundle_with_typed_assets(extra: dict[str, Asset] | None = None) -> Bundle:
+    """Create a bundle with assets of various types for handle testing, plus ``extra``."""
+    assets: dict[str, Asset] = dict(extra or {})
 
     # Skill assets (a skill folder with SKILL.md)
     assets["skills/search/SKILL.md"] = Asset(
@@ -294,6 +294,33 @@ class TestBundle:
         sel = bundle.select(prompts=["main"], skills=[])
         assert len(sel.prompts()) == 1
         assert len(sel.skills()) == 0
+
+    def test_select_with_no_filters_keeps_untyped_files(self):
+        """#19: select() with no filters is the whole bundle, config and other files included."""
+        untyped = {
+            path: Asset(
+                asset_id=path,
+                logical_path=path,
+                asset_type=asset_type,
+                content=b"x",
+                content_sha256=path,
+                size_bytes=1,
+            )
+            for path, asset_type in (
+                ("config/settings.yaml", AssetType.CONFIG),
+                ("assets/logo.svg", AssetType.OTHER),
+            )
+        }
+        bundle = _make_bundle_with_typed_assets(untyped)
+
+        sel = bundle.select()
+
+        assert {f.logical_path for f in sel.files()} == {f.logical_path for f in bundle.files()}
+        assert sel.file("config/settings.yaml") is not None
+        assert sel.file("assets/logo.svg") is not None
+        # A filter still selects only the files of the resources it names.
+        filtered = bundle.select(skills=["search"])
+        assert filtered.file("config/settings.yaml") is None
 
     def test_select_empty(self):
         bundle = _make_bundle_with_typed_assets()
